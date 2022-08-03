@@ -16,6 +16,7 @@ CS4_Challenge实验笔记
    :caption: CMU-15213实验笔记
    :maxdepth: 2
 
+   cmu_15213/lab1-datalab
 
 
 
