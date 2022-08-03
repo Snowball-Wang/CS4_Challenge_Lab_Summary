@@ -7,64 +7,63 @@ Lab 1: Data Lab
 
 ``datalab``\ 实验的目的是让程序员从\ **位**\ （或者叫\ **比特**\ ）的视角理解如何表示整型数和浮点数。实验总共有13个谜题，每个谜题只能使用限定的操作符（如\ ``!``\ 、\ ``~``\ 等）来实现特定的高级功能。13个谜题分别对应13个函数，如下表所示。
 
-.. list-table::
+.. list-table:: datalab puzzles
+   :width 20 30 10 20
    :header-rows: 1
 
    * - 函数名
      - 描述
      - 评分
      - 最多可使用操作符数量
-   * - ``bitXor(x, y)``
-     - 只用\ ``&``\ 和\ ``~``\ 实现`x
-     - 
-     - y`
+   * - \ ``bitXor(x, y)``\
+     - 只用\ ``&``\ 和\ ``~``\ 实现x \ ``||``\ y
      - 1
      - 14
-   * - ``tmin()``
+   * - \ ``tmin()``\
      - 实现最小的补码数
      - 1
      - 4
-   * - ``isTmax(x)``
+   * - \ ``isTmax(x)``\
      - 判断x是不是最大的补码数，若是，返回True
      - 1
      - 10
-   * - ``allOddBits(x)``
+   * - \ ``allOddBits(x)``\
      - 判断x的奇位是不是都为1
      - 2
      - 12
-   * - ``negate(x)``
-     - 不使用\ ``-``\ 号得到\ ``-x``
+   * - \ ``negate(x)``\
+     - 不使用\ ``-``\ 号得到\ ``-x``\
      - 2
      - 5
-   * - ``isAsciiDigit(x)``
+   * - \ ``isAsciiDigit(x)``\
      - 判断x是否是字符0~9
      - 3
      - 15
-   * - ``conditional``
-     - 实现\ ``x ? y : z``
+   * - \ ``conditional``\
+     - 实现\ ``x ? y : z``\
      - 3
      - 16
-   * - ``isLessOrEqual(x, y)``
+   * - \ ``isLessOrEqual(x, y)``\
      - 判断x是否小于等于y
      - 3
      - 24
-   * - ``LogicalNeg(x)``
-     - 不使用\ ``!``\ 号得到\ ``!x``
+   * - \ ``LogicalNeg(x)``\
+     - 不使用\ ``!``\ 号得到\ ``!x``\
      - 4
      - 12
-   * - ``howManyBits(x)``
+   * - \ ``howManyBits(x)``\
      - 用补码表示x需要的最小比特数
      - 4
      - 90
-   * - ``floatScale2(uf)``
+   * - \ ``floatScale2(uf)``\
      - 返回\ ``2*f``\ 的位表示
      - 4
      - 30
-   * - ``floatFloat2Int(uf)``
+   * - \ ``floatFloat2Int(uf)``\
      - 返回\ ``(int)f``\ 的位表示
      - 4
      - 30
-   * - ``floatPower2(uf)``
+   * - \ ``floatPower2(uf)``\
      - 返回\ ``2.0^x``\ 的位表示
      - 4
      - 30
