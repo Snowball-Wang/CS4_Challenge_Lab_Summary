@@ -11,6 +11,7 @@ CS4_Challenge实验笔记
    :maxdepth: 2
 
    mit_6s081/lab0-setup
+   mit_6s081/lab1-util
 
 .. toctree::
    :caption: CMU-15213实验笔记
