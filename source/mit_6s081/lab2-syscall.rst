@@ -115,7 +115,7 @@ xv6提供了用户态的 ``trace`` 程序（位于 ``user/trace.c`` ），如下
                 release(&tickslock);
                 return -1;
             }
-        sleep(&ticks, &tickslock);
+            sleep(&ticks, &tickslock);
         }
         release(&tickslock);
     return 0;
@@ -157,7 +157,7 @@ sysinfo
 ``sysinfo`` 的实现同 ``trace`` 系统调用的实现步骤基本一致，包括添加用户态的声明和定义、内核态的系统调用号和 ``sys_sysinfo`` 的实现。
 不同之处在于我们需要分别实现空余内存的计算以及非 ``UNUSED`` 状态进程数量的统计。
 先看如何实现空余内存的计算。 在 ``kernel/kalloc.c`` 中， 定义了一个全局变量 ``kmem`` 用链表数据结构记录空余内存。
-``kfree`` 函数可以看到被释放的 ``PGSIZE`` 大小的内存被添加到链表的头部，然后将链表的头指针指向新添加的节点。
+``kfree`` 函数释放的 ``PGSIZE`` 大小的内存被添加到链表的头部，然后将链表的头指针指向新添加的节点。
 由此，我们只需遍历 ``kmem`` 中空余内存的链表，即可获得系统剩余的内存大小。
 
 .. code-block:: c
@@ -178,9 +178,10 @@ sysinfo
         return total_bytes;
     }
 
+
 再看如何统计系统中非 ``UNUSED`` 状态的进程数量。在 ``kernel/proc.c`` 中定义了一个全局变量 ``struct proc proc[NPROC]`` 。
- ``NPROC`` 是定义在 ``kernel/param.h`` 的宏，值为64，说明xv6系统最大只支持64个进程。
- 那统计非 ``UNUSED`` 状态的进程数，只需要遍历这64个进程，筛除 ``UNUSED`` 状态的进程即可。
+``NPROC`` 是定义在 ``kernel/param.h`` 的宏，值为64，说明xv6系统最大只支持64个进程。
+那统计非 ``UNUSED`` 状态的进程数，只需要遍历这64个进程，筛除 ``UNUSED`` 状态的进程即可。
 
 .. code-block:: c
 
@@ -237,12 +238,15 @@ sysinfo
 .. image:: ./../_images/6s081/lab2_syscall_score.png
 
 
-3. 实验总结
+1. 实验总结
 -----------
 
 本次实验的难度一般，但在实现过程中还是有一些细节需要注意。
+
 比如说在 ``trace`` 系统调用的实现中，一定要在进程销毁函数 ``freeproc`` 中将销毁的进程的trace掩码置为0。
 否则在xv6的shell中使用过 ``trace`` 后，再敲入 ``grep hello README`` 依然可能会跟踪系统调用，打印出相应的信息。
+
 再比如说在 ``sysinfo`` 系统调用的实现中，因为是直接拷贝 ``sys_fstat`` 的实现，对应调用 ``argaddr()`` 函数的第一个参数错误地设置为了1，实际情况应该为0，导致 ``sysinfotest`` 可以运行，但总是失败。
 在 ``debug`` 模式下调试了很久也没有找出问题所在。最后才在对比其它系统调用的实现后找出了问题所在。
+
 所以在xv6的实验过程，对于每个使用的函数，都要明确其传入参数、返回值的具体含义，不当的使用很有可能造成程序难以调试的错误。
