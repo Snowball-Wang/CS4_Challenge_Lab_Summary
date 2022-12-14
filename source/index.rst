@@ -12,6 +12,7 @@ CS4_Challenge实验笔记
 
    mit_6s081/lab0-setup
    mit_6s081/lab1-util
+   mit_6s081/lab2-syscall
 
 .. toctree::
    :caption: CMU-15213实验笔记
@@ -22,10 +23,3 @@ CS4_Challenge实验笔记
    cmu_15213/lab3-attacklab
 
 
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
