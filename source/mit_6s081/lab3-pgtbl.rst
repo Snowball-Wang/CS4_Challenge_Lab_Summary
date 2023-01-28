@@ -626,7 +626,8 @@ Simplify copyin/copyinstr
 
 .. image:: ./../_images/6s081/lab3_pgtbl_score.png
 
-1. 实验总结
+
+3. 实验总结
 -----------
 
 本次实验巨难，难度不是实现，而是实现后可能出现的各种奇怪的bug。这个实现让我深刻地体会到了什么叫做 **魔鬼在细节** 。
