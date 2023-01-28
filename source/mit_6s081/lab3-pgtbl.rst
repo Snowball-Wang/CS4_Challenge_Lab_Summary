@@ -31,7 +31,7 @@ Print a page table
 
 可以看到第一行打印的是根页表所在的物理地址，即写入到 ``satp`` 寄存器的值。
 接下来的每一行首先根据页表的层级，或者说页表的深度来决定 ``..`` 的打印个数。
-然后打印每行的PTE的索引，对应的值，以及其对应下一层级页表的物理地址。
+然后打印每行的PTE的索引号，PTE对应的值，以及其对应下一层级页表的物理地址。
 
 首先根据题目提示在 ``kernel/exec.c`` 的 ``return argc`` 前添加 ``vmprint`` 的调用代码。
 
@@ -45,7 +45,7 @@ Print a page table
 
     return argc; // this ends up in a0, the first argument to main(argc, argv)
 
-然后在 ``kernel/defs.h`` 里添加 ``vmprint`` 函数的声明，再在 ``kernel/vm.c`` 里先写好 ``vmprint`` 函数的定义框架。
+然后在 ``kernel/defs.h`` 里添加 ``vmprint`` 函数的声明，再在 ``kernel/vm.c`` 里先写好 ``vmprint`` 函数的框架。
 
 根据题目提示，我们先看一下 ``freewalk`` 的实现。
 
@@ -71,14 +71,15 @@ Print a page table
     }
 
 ``freewalk`` 用递归的方式，遍历每个层级页表的每条PTE。每层页表一共有512个PTE。
-对于根页表和中间页表来说，如果PTE中只有 ``PTE_V`` 位被置位，则提取PTE里的物理地址，递归进入下一级页表。
+对于根页表和中间页表来说，PTE中只有 ``PTE_V`` 位被置位，提取PTE里的物理地址，递归进入下一级页表。
 需要注意的是，在调用 ``freewalk`` 函数之前，需要确保第三层级页表的映射关系已经被删除，也就是对应的第三层级页表中的PTE都为0。
-否则如果第三层级页表中PTE的 ``PTE_V`` 依旧有效，则证明 ``freewalk`` 的先决条件没有满足，系统直接 ``panic`` 。
+否则如果第三层级页表中PTE的 ``PTE_V`` 依旧有效，则证明 ``freewalk`` 的先决条件没有满足，系统直接panic。
+
 ``freewalk`` 递归调用，第三层级的页表最先被 ``kfree`` 释放物理内存。然后返回到中间页表，将其PTE置为0，最后通过 ``kree`` 释放页表映射的物理内存。
 根页表以此类推。
 
 仿照 ``freewalk`` 函数， 我们也通过递归的方法实现 ``vmprint`` 。
-不过考虑到需根据页表层级打印内容，我们可将 ``vmprint`` 看作一层封装，调用 ``vmprint_lv`` 函数。
+不过考虑到需根据页表深度打印内容，我们可将 ``vmprint`` 看作一层封装，调用 ``vmprint_lv`` 函数。
 ``vmprint_lv`` 除 ``pagetable`` 参数外，还有页表层级 ``level`` 来确定打印 ``..`` 的个数。
 其代码实现如下：
 
@@ -124,7 +125,7 @@ A kernel page table per process
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 xv6有一个全局的内核页表 ``kernel_pagetable`` ，此内核页表被所有进程共享。
-本实验即实现每个进程独有的内核页表，并通过 ``usertests`` 中的所有的测试用例。
+本实验即实现每个进程独有的内核页表，并通过 ``usertests`` 中所有的测试用例。
 
 根据题目第一条提示，首先在 ``kernel/proc.h`` 中对进程结构体 ``struct proc`` 添加内核页表的成员变量。
 
@@ -309,7 +310,7 @@ xv6有一个全局的内核页表 ``kernel_pagetable`` ，此内核页表被所�
     panic: kvmpa
 
 
-xv6启动出现panic，且引发的函数为 ``kvmpa`` 。查看函数 ``kvmpa`` 的实现，其功能是翻译内核栈上的虚拟地址成对应实际的物理地址。
+xv6启动出现panic，且引发的函数为 ``kvmpa`` 。查看函数 ``kvmpa`` 的实现，其功能是将内核栈上的虚拟地址翻译成对应实际的物理地址。
 在xv6中，函数 ``virtio_disk_rw`` 调用了函数 ``kvmpa`` 。
 而在 ``kvmpa`` 里，其使用的内核页表为全局内核页表 ``kernel_pagetable`` ，而不是对应当前进程的内核页表 ``p->kpagetable`` 。
 所以我们对函数 ``kvmpa`` 进行以下修改：
@@ -460,7 +461,7 @@ Simplify copyin/copyinstr
 
 本实验在上个实验的基础上，对原先的 ``copyin`` 和 ``copyinstr`` 函数用 ``copyin_new`` 和 ``copyinstr_new`` 函数替代。
 这样的好处是不必要再将用户态程序的指针翻译成物理地址后，才能把参数数据从用户态拷贝到内核态。
-在这个实验中，我们需将用户态的页表映射关系添加到内核页表中，这样我们可以再内核页表中直接对用户态的指针进行解引用。
+在这个实验中，我们需将用户态的页表映射关系添加到内核页表中，这样我们可以在内核页表中直接对用户态的指针进行解引用。
 
 根据题目第一条提示，首先用 ``copyin_new`` 和 ``copyinstr_new`` 函数替代 ``copyin`` 和 ``copyinstr`` 函数。
 
@@ -476,7 +477,7 @@ Simplify copyin/copyinstr
         return copyinstr_new(pagetable, dst, srcva, max);
     }
 
-若要在 ``kernel/vm.c`` 使用 ``copyin_new`` 和 ``copyinstr_new``函数，则需在 ``kernel/defs.h`` 里对其进行声明。
+若要在 ``kernel/vm.c`` 使用 ``copyin_new`` 和 ``copyinstr_new`` 函数，则需在 ``kernel/defs.h`` 里对其进行声明。
 
 .. code-block:: c
 
@@ -605,11 +606,13 @@ Simplify copyin/copyinstr
 
 运行 ``usertests`` 程序，发现 ``sbrkbasic`` 和 ``sbrkbugs`` 两个测试用例出错。
 进一步调试，发现错误定位在 ``sbrkbasic`` 调用 ``sbrk(1)`` 处，错误显示 ``test sbrkbasic: panic: u2kvmcopy: page not present`` 。
+
 再回顾 ``u2kvmcopy`` 函数，对应 ``start`` 传入的值并不一定是页表对齐的。
 当增长的值很小，比如说为1时，我们不应该首先对 ``start`` 进行页表对齐，否则 ``for`` 循环中第二个判断的条件 ``start + sz`` 中的 ``start`` 也是对齐后的值。
 调整一下，将 ``for`` 循环的初始条件改为 ``i = PGROUNDUP(start)`` ， 原先的 ``start = PGROUNDUP(start)`` 删除，则此测试用例通过。
+
 同理， ``sbrkbugs`` 的错误显示为 ``panic: freewalk: leaf`` ，表明我们在释放页表的过程中，有映射关系没有清理干净。
-有理由怀疑是我们添加到内核页表里的用户态映射关系导致的，再结合 ``sbrkbasic`` 的经验，我们将原先的 ``uvmunmap(p->kpagetable, 0, p->sz / PGSIZE, 0);`` 修改为 ``uvmunmap(p->kpagetable, 0, PGROUNDUP(p->sz) / PGSIZE, 0);`` ， 从而避免了由于用户态页表不是页表对齐导致的释放不干净的情况。
+有理由怀疑是我们添加到内核页表里的用户态映射关系导致的，再结合 ``sbrkbasic`` 的经验，我们将原先的 ``uvmunmap(p->kpagetable, 0, p->sz / PGSIZE, 0);`` 修改为 ``uvmunmap(p->kpagetable, 0, PGROUNDUP(p->sz) / PGSIZE, 0);`` ， 从而避免了由于用户态页表不是页表对齐导致的释放不干净的情况发生。
 
 再次运行 ``usertests`` 程序，发现所有测试用例通过，实验完成。
 
@@ -623,8 +626,8 @@ Simplify copyin/copyinstr
 
 .. image:: ./../_images/6s081/lab3_pgtbl_score.png
 
-3. 实验总结
+1. 实验总结
 -----------
 
-本次实验巨难，难度不是实现，而是实现后可能出现的各种奇怪的bug。这个实现让我深刻地体会到了什么叫做**魔鬼在细节**。
+本次实验巨难，难度不是实现，而是实现后可能出现的各种奇怪的bug。这个实现让我深刻地体会到了什么叫做 **魔鬼在细节** 。
 总计，2022年4月份就是因为这个实验做不了而搁置了这门课程的学习。现在是2023年1月底，总算过了这道坎。
