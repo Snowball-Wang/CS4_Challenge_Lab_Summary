@@ -1,4 +1,4 @@
-Lab 3: page tables
+Lab 3: Page Tables
 ===================
 
 1. 实验介绍

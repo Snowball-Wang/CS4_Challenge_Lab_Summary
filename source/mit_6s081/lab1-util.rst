@@ -1,4 +1,4 @@
-Lab 1: xv6 and unix utilities
+Lab 1: Xv6 and Unix Utilities
 =============================
 
 1. 实验介绍

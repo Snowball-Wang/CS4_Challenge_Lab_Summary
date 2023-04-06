@@ -1,4 +1,4 @@
-Lab 2: system calls
+Lab 2: System Calls
 ===================
 
 1. 实验介绍
