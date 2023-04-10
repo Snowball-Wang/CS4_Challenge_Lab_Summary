@@ -17,6 +17,7 @@ RISC-V assembly
 根据提示，我们首先看一下 ``user/call.asm`` 里包含的函数 ``g`` ， ``f`` 以及 ``main`` 的汇编代码。
 
 函数 ``g`` 的汇编代码：
+
 .. code-block:: asm
 
     0000000000000000 <g>:
@@ -46,6 +47,8 @@ RISC-V assembly
     16:	6422                	ld	    s0,8(sp)
     18:	0141                	addi	sp,sp,16
     1a:	8082                	ret
+
+函数 ``main`` 的汇编代码：
 
 .. code-block:: asm
 
@@ -137,7 +140,7 @@ Backtrace
 
 .. image:: ./../_images/6s081/lab4_stack_layout.png
 
-第四条提示中xv6分配每个内核栈时，地址都是页对齐的信息，我们可知当前栈的顶端地址为 ``PGROUNDDOWN(fp)`` ，末端地址为 ``PGROUNDUP(fp)`` （栈的地址是自顶向下增长的）。
+第四条提示中表明xv6分配每个内核栈时，地址都是页对齐的。我们可知当前栈的顶端地址为 ``PGROUNDDOWN(fp)`` ，末端地址为 ``PGROUNDUP(fp)`` （栈的地址是自顶向下增长的）。
 结合以上信息，我们在 ``backtrace`` 函数中可利用存放在寄存器s0中当前帧指针的值，遍历栈上的函数栈。
 
 .. code-block:: c
@@ -183,7 +186,7 @@ Alarm
 ^^^^^^^
 
 本实验将给xv6添加一个新的功能，用来周期性地提示一个进程所使用的CPU时间。
-我们需要添加一个新的系统调用函数 ``sigalarm(interval, handler)`` ，当应用程序调用 ``sigalarm(n, fn)`` 时，每消耗n个ticks的时钟时，内核都会调用执行一次函数fn。
+我们需要添加一个新的系统调用函数 ``sigalarm(interval, handler)`` ，当应用程序调用 ``sigalarm(n, fn)`` 时，每消耗n个ticks的时钟，内核都会调用执行一次函数fn。
 当函数fn执行完成返回后，程序将继续执行上次停留的地方。当应用程序调用 ``sigalarm(0, 0)`` 时，内核将不再周期性地生成提示。
 ``alarmtest`` 中调用 ``sigalarm(2, periodic)`` 来请求内核每2个ticks执行一次 ``periodic`` 函数。
 本实验地最终效果如下所示：
@@ -329,7 +332,7 @@ test 0: invoke handler
                 p->trapframe->epc = p->alarm_handler;
                 p->elapse_ticks = 0;
             }
-        yield();
+            yield();
         }
     }
 
@@ -409,7 +412,7 @@ test1/test2(): resume interrupted code
     }
 
 根据 ``test1`` 的错误信息，我们可以看到 ``alarmtest`` 在 ``test1`` 函数执行错误的原因是因为 ``i`` 和 ``j`` 的值不等。
-注释里说明了两者不等的可能原因有二：一是中断相应函数的返回地址出错，另一个是寄存器的值没有得到恰当的保护。
+注释里说明了两者不等的可能原因有二：一是中断处理函数的返回地址出错，另一个是寄存器的值没有得到恰当的保护。
 我们则需要将 ``usertrap`` 和 ``sigreturn`` 结合起来，让用户态程序在处理完alarm中断后，继续正常执行。
 要达到此功能，我们需要注意以下事项：
 
@@ -429,7 +432,7 @@ test1/test2(): resume interrupted code
     }
 
 有个这个，我们就可以在 ``usertrap`` 执行中断处理函数之前，将当前进程的 ``trapframe`` 保存到 ``intr_trap`` 中。
-然后我们可以在 ``sys_sigreturn`` 中复原，即把 ``intr_trap`` 保存的寄存器的值再赋值给进程的 ``trapframe`` ，这样进程在执行完中断函数返回时，将继续执行之前被中断的指令。
+然后我们可以在 ``sys_sigreturn`` 中复原，即把 ``intr_trap`` 保存的寄存器的值再赋值给进程的 ``trapframe`` ，这样进程在执行完中断函数返回时，使用的寄存器的值是中断之前的值。
 同时，为了避免中断处理函数在执行过程中再次被内核调用，我们可以在 ``proc`` 结构体新添一个 ``intr_is_running`` 的成员变量，用来判断当前进程是否再执行中断处理函数。
 
 .. code-block:: c
