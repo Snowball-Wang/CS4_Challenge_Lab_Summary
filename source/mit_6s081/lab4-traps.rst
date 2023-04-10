@@ -22,14 +22,14 @@ RISC-V assembly
 
     0000000000000000 <g>:
     int g(int x) {
-    0:	1141                	addi	sp,sp,-16
-    2:	e422                	sd	    s0,8(sp)
-    4:	0800                	addi	s0,sp,16
+    0:	1141                	addi    sp,sp,-16
+    2:	e422                	sd      s0,8(sp)
+    4:	0800                	addi    s0,sp,16
     return x+3;
     }
-    6:	250d                	addiw	a0,a0,3
-    8:	6422                	ld	    s0,8(sp)
-    a:	0141                	addi	sp,sp,16
+    6:	250d                	addiw   a0,a0,3
+    8:	6422                	ld      s0,8(sp)
+    a:	0141                	addi    sp,sp,16
     c:	8082                	ret
 
 函数 ``f`` 的汇编代码：
@@ -38,14 +38,14 @@ RISC-V assembly
 
     000000000000000e <f>:
     int f(int x) {
-    e:	1141                	addi	sp,sp,-16
-    10:	e422                	sd	    s0,8(sp)
-    12:	0800                	addi	s0,sp,16
+    e:	1141                	addi    sp,sp,-16
+    10:	e422                	sd      s0,8(sp)
+    12:	0800                	addi    s0,sp,16
     return g(x);
     }
-    14:	250d                	addiw	a0,a0,3
-    16:	6422                	ld	    s0,8(sp)
-    18:	0141                	addi	sp,sp,16
+    14:	250d                	addiw   a0,a0,3
+    16:	6422                	ld      s0,8(sp)
+    18:	0141                	addi    sp,sp,16
     1a:	8082                	ret
 
 函数 ``main`` 的汇编代码：
@@ -53,21 +53,21 @@ RISC-V assembly
 .. code-block:: asm
 
     void main(void) {
-    1c:	1141                	addi	sp,sp,-16
-    1e:	e406                	sd	    ra,8(sp)
-    20:	e022                	sd	    s0,0(sp)
-    22:	0800                	addi	s0,sp,16
+    1c:	1141                	addi    sp,sp,-16
+    1e:	e406                	sd      ra,8(sp)
+    20:	e022                	sd      s0,0(sp)
+    22:	0800                	addi    s0,sp,16
     printf("%d %d\n", f(8)+1, 13);
-    24:	4635                	li	    a2,13
-    26:	45b1                	li	    a1,12
-    28:	00000517          	    auipc	a0,0x0
-    2c:	7b050513          	    addi	a0,a0,1968 # 7d8 <malloc+0xea>
-    30:	00000097          	    auipc	ra,0x0
-    34:	600080e7          	    jalr	1536(ra) # 630 <printf>
+    24:	4635                	li      a2,13
+    26:	45b1                	li      a1,12
+    28:	00000517                auipc   a0,0x0
+    2c:	7b050513                addi    a0,a0,1968 # 7d8 <malloc+0xea>
+    30:	00000097                auipc   ra,0x0
+    34:	600080e7                jalr    1536(ra) # 630 <printf>
     exit(0);
-    38:	4501                	li	    a0,0
-    3a:	00000097          	    auipc	ra,0x0
-    3e:	27e080e7          	    jalr	638(ra) # 2b8 <exit>
+    38:	4501                	li      a0,0
+    3a:	00000097                auipc   ra,0x0
+    3e:	27e080e7                jalr    638(ra) # 2b8 <exit>
 
 
 问题1：哪些寄存器包含函数的参数？例如，main函数中调用 ``printf`` ，哪个寄存器存有13的值？
