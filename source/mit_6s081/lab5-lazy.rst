@@ -31,7 +31,7 @@ Eliminate allocation from sbrk()
         return addr;
     }
 
-可以看到，在 ``sys_sbrk`` 中调用了 ``growproc`` 来对增加或缩减的堆内存进行处理， ``growproc`` 的实现如下：
+可以看到，在 ``sys_sbrk`` 中调用了 ``growproc`` 来增加或缩减堆内存， ``growproc`` 的实现如下：
 
 .. code-block:: c
 
@@ -92,7 +92,7 @@ Lazy allocation
 在上个实验中，我们仅仅只是在 ``sys_sbrk`` 里改变了进程的内存大小，并没有对出现缺页错误进行处理。
 在本实验中，我们将在 ``usertrap`` 里针对缺页错误的内存地址分配物理内存，并添加映射关系，从而让程序能够继续正常地运行。
 
-根据前两条提示，我们需在 ``usertrap`` 里对 ``r_scause()`` 添加新的判断条件，即当其为13(load page fault)和15(store page fault)时，我们进行缺页处理。
+根据前两条提示，我们需在 ``usertrap`` 里对 ``r_scause()`` 添加新的判断条件，即当其为13 ``load page fault`` 和15 ``store page fault`` 时，我们进行缺页处理。
 在缺页处理中，我们参考 ``uvmalloc`` 函数，为发生缺页错误的虚拟地址分配 ``PGSIZE`` 的物理内存，并将新分配的物理内存地址与虚拟内存地址进行映射。
 代码的实现如下：
 
@@ -280,6 +280,7 @@ Lazytests and Usertests
     }
 
 查看 ``user/lazytests.c`` ，发现其有三个测试用例：
+
 - sparse_memory
 - sparse_memory_unmap
 - oom
@@ -360,7 +361,7 @@ Lazytests and Usertests
 可以看到上述错误发生在销毁子进程，释放子进程内存空间的过程中。
 再次查看 ``lazytests.c`` 中第二个测试用例函数 ``sparse_memory_unmap`` ，函数在父进程通过 ``sbrk`` 增加了 ``REGION_SZ`` 的堆内存。
 然后基于 ``PGSIZE * PGSIZE`` 的步长利用缺页错误对延迟分配的部分堆内存进行赋值和添加映射。
-完成上述步骤后，再基于上述步长每次 ``fork`` 一个子进程，缩减子进程 ``REGION_SZ`` 的内存空间，然后再访问子进程从父进程拷贝过来的 ``REGION_SZ`` 中之前赋值的队内存地址。
+完成上述步骤后，再基于上述步长每次 ``fork`` 一个子进程，缩减子进程 ``REGION_SZ`` 的堆内存空间，然后再访问子进程从父进程拷贝过来的 ``REGION_SZ`` 中之前赋值的堆内存地址。
 
 但因为我们对 ``sbrk`` 传入的参数为负数的情况，采取的是 ``eager deallocation`` 的策略，所以函数 ``sparse_memory_unmap`` 的子进程执行 ``*(char **)i = i`` 应该在 ``usertrap`` 中做错误处理。
 根据第三和第六条提示，我们对函数 ``usertrap`` 进行以下修改：
@@ -396,7 +397,7 @@ Lazytests and Usertests
     ALL TESTS PASSED
 
 
-此时我们已经通过 ``lazytests`` 中的前两个测试用例。回到看代码实现，我觉得 ``usertrap`` 里关于缺页错误的处理可以单独设计一套API，这样逻辑也会更加清晰。
+此时我们已经通过 ``lazytests`` 中的前两个测试用例。回头看代码实现，我觉得 ``usertrap`` 里关于缺页错误的处理可以单独设计一套API，这样逻辑也会更加清晰。
 
 .. code-block::  c
 
@@ -463,9 +464,9 @@ Lazytests and Usertests
     panic: walk
 
 可以看到错误的va的值为 ``0xffffffff80003000`` ，猜测肯定是地址计算时值出现了溢出错误。
-再理解以下 ``lazytests.c`` 中的 ``oom`` 函数，发现其调用定义在 ``user/umalloc.c`` 中的 ``malloc`` 函数来分配堆内存。而 ``malloc`` 实际最终调用的还是 ``sbrk`` 系统调用。
-``oom`` 函数里通过 ``while((m2 = malloc(4096*4096)) != 0)`` 不断扩展堆内存，并将前一次的地址赋值给新一次分配的堆内存上。子进程理应在某次访问中出现错误，所以永远访问不到 ``exit(0)`` 上。
-这样父进程捕捉到子进程的退出码不为0，即函数退出码 ``exit(xstatus == 0)`` 也不为0。
+再理解以下 ``lazytests.c`` 中的 ``oom`` 函数，发现其调用定义在 ``user/umalloc.c`` 中的 ``malloc`` 函数来分配堆内存。而 ``malloc`` 最终调用的还是 ``sbrk`` 系统调用。
+``oom`` 函数里通过 ``while((m2 = malloc(4096*4096)) != 0)`` 不断扩展堆内存，并将前一次的地址赋值给新一次分配的堆内存上。子进程理应在某次访问中出现错误，所以永远不会执行 ``exit(0)`` 。
+这样父进程捕捉到子进程的退出码不为0，即父进程退出码 ``exit(xstatus == 0)`` 也不为0。
 
 理解了 ``oom`` 函数的执行逻辑，再结合前面猜测的溢出错误，我们回到 ``sys_sbrk`` 中，加入 ``addr`` 和 ``addr + n`` 的打印信息。
 
@@ -556,12 +557,14 @@ Lazytests and Usertests
 实验最终结果
 ^^^^^^^^^^^
 
-实验最后还需要添加 ``time.txt`` 文件记录实验所花费的时间。敲入 ``make grade`` 命令，可看到实验得分满分。
+实验最后还需要添加 ``time.txt`` 文件记录实验所花费的时间。另外 ``lazytests.c`` 中的三个用例的描述需改回同原来一样，评分的脚本是通过字符匹配来确定测试用例通过。
 
-.. image:: ./../_images/6s081/lab4_lazy_score.png
+敲入 ``make grade`` 命令，可看到实验得分满分。
+
+.. image:: ./../_images/6s081/lab5_lazy_score.png
 
 
-1. 实验总结
+3. 实验总结
 -----------
 
 本次实验卡在了两个问题，一个是 ``oom`` 实验中出现的虚拟地址溢出的问题，一个是 ``usertests`` 中 ``sbrkarg`` 出错的问题。
