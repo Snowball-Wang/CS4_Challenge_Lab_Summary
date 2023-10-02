@@ -267,7 +267,7 @@ Part A
 ^^^^^^^^
 
 本部分的实验都是在 ``sim/misc`` 目录下进行。
-实验的主要任务是将 ``example.c`` 里三个C函数通过Y86-64汇编代码实现。
+实验的主要任务是将 ``examples.c`` 里三个C函数通过Y86-64汇编代码实现。
 然后用实验提供的 ``yas`` 汇编器生成Y86-64二进制代码，再使用 ``yis`` 指令模拟器运行生成的Y86-64程序。
 
 sum.ys
@@ -296,7 +296,7 @@ sum.ys
     }
 
 在将上述C代码转换成Y86-64汇编语言之前，我们可先将其转换成X86-64汇编语言。
-`网站 <https://godbolt.org/>`_ 提供了在线的C代码对应的X86-64汇编代码的转换，如下所示：
+`此网站 <https://godbolt.org/>`_ 可在线将C代码转换成X86-64汇编代码，如下所示：
 
 .. code-block:: asm
 
@@ -346,7 +346,7 @@ sum.ys
     loop:
             mrmovq (%rdi),%r10   # Get ls->val
             addq %r10,%rax       # Add to sum
-            mrmovq 8(%rdi),%rdi   # ls = ls->next
+            mrmovq 8(%rdi),%rdi  # ls = ls->next
     test:
             andq %rdi,%rdi       # Is ls NULL?
             jne    loop          # Stop when 0
@@ -481,7 +481,7 @@ rsum.ys
     0x01f8: 0x0000000000000000      0x0000000000000013
 
 可以看到，递归的实现方式最终的结果，也就是 ``%rax`` 值同遍历链表的方法得到的结果是一致的。
-但是可以明显看到，递归需要与内存发生更多的交互，因为存在着递归函数出栈压栈的操作。
+但是运行结果显示，递归需要与内存发生更多的交互，因为存在着递归函数出栈压栈的操作。
 
 copy.ys
 ''''''''
@@ -602,3 +602,246 @@ copy.ys
     0x01f8: 0x0000000000000000      0x0000000000000013
    
 可以看到，原先位于 ``dest`` 的内存值，都被修改成 ``src`` 数组中的值。
+
+Part B
+^^^^^^^^
+
+本部分的实验是在 ``sim/seq`` 目录下完成的。
+实验的主要任务是根据课后习题4.51和4.52，修改Y84-64处理器的顺序实现的HCL文件 ``seq-full.hcl`` ，添加一条新的指令 ``iaddq`` 。
+
+修改 ``seq-full.hcl``
+''''''''''''''''''''''
+
+根据练习习题4.3的说明，指令 ``iaddq`` 的编码格式如下所示。
+
+.. image:: ./../_images/csapp/iaddq.png
+
+再仿照 ``OPq`` 和 ``irmovq`` 指令的计算步骤，我们可以写出新添加的指令 ``iaddq`` 的计算步骤。
+
+.. image:: ./../_images/csapp/iaddq_computation_steps.png 
+
+明确了指令 ``iaddq`` 的在每一个阶段中的操作，我们就可以对文件 ``seq-full.hcl`` 进行相应的修改。
+
+修改的patch如下所示。首先， ``seq-full.hcl`` 中已经为我们定义好了 ``iaddq`` 命令，但是并没有将其加入到 ``instr_valid`` 中。
+所以我们首先把指令 ``iaddq`` 加入到其中。 
+在取指阶段中， ``iaddq`` 指令既需要读取寄存器 ``rB`` 的值，也需要读取一个常量，所以同时需要 ``need_regids`` 和 ``need_valC`` 控制逻辑。
+``iaddq`` 会将读取的寄存器 ``rB`` 的值存放在 ``srcB`` 中，并将计算过后的值存放在 ``dstE`` 中。
+在执行阶段， ``iaddq`` 指令的两个输入 ``aluA`` 和 ``aluB`` 分别是 ``valC`` 和 ``valB`` ， ``alufun`` 计算功能保持默认加的操作。
+同 ``addq`` 指令一样， ``iaddq`` 指令我们也需要根据指令的计算结果对条件码置位，即把 ``iaddq`` 添加到 ``set_cc`` 的控制逻辑里。
+
+.. code-block:: console
+
+        $ git diff seq/seq-full.hcl
+        diff --git a/sim/seq/seq-full.hcl b/sim/seq/seq-full.hcl
+        index 0c946dd..c71a82c 100644
+        --- a/sim/seq/seq-full.hcl
+        +++ b/sim/seq/seq-full.hcl
+        @@ -106,16 +106,16 @@ word ifun = [
+
+        bool instr_valid = icode in
+                { INOP, IHALT, IRRMOVQ, IIRMOVQ, IRMMOVQ, IMRMOVQ,
+        -              IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ };
+        +              IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ, IIADDQ };
+
+        # Does fetched instruction require a regid byte?
+        bool need_regids =
+                icode in { IRRMOVQ, IOPQ, IPUSHQ, IPOPQ,
+        -                    IIRMOVQ, IRMMOVQ, IMRMOVQ };
+        +                    IIRMOVQ, IRMMOVQ, IMRMOVQ, IIADDQ };
+
+        # Does fetched instruction require a constant word?
+        bool need_valC =
+        -       icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IJXX, ICALL };
+        +       icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IJXX, ICALL, IIADDQ };
+
+        ################ Decode Stage    ###################################
+
+        @@ -128,7 +128,7 @@ word srcA = [
+
+        ## What register should be used as the B source?
+        word srcB = [
+        -       icode in { IOPQ, IRMMOVQ, IMRMOVQ  } : rB;
+        +       icode in { IOPQ, IRMMOVQ, IMRMOVQ, IIADDQ  } : rB;
+                icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
+                1 : RNONE;  # Don't need register
+        ];
+        @@ -136,7 +136,7 @@ word srcB = [
+        ## What register should be used as the E destination?
+        word dstE = [
+                icode in { IRRMOVQ } && Cnd : rB;
+        -       icode in { IIRMOVQ, IOPQ} : rB;
+        +       icode in { IIRMOVQ, IOPQ, IIADDQ} : rB;
+                icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
+                1 : RNONE;  # Don't write any register
+        ];
+        @@ -152,7 +152,7 @@ word dstM = [
+        ## Select input A to ALU
+        word aluA = [
+                icode in { IRRMOVQ, IOPQ } : valA;
+        -       icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ } : valC;
+        +       icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IIADDQ } : valC;
+                icode in { ICALL, IPUSHQ } : -8;
+                icode in { IRET, IPOPQ } : 8;
+                # Other instructions don't need ALU
+        @@ -161,7 +161,7 @@ word aluA = [
+        ## Select input B to ALU
+        word aluB = [
+                icode in { IRMMOVQ, IMRMOVQ, IOPQ, ICALL,
+        -                     IPUSHQ, IRET, IPOPQ } : valB;
+        +                     IPUSHQ, IRET, IPOPQ, IIADDQ } : valB;
+                icode in { IRRMOVQ, IIRMOVQ } : 0;
+                # Other instructions don't need ALU
+        ];
+        @@ -173,7 +173,7 @@ word alufun = [
+        ];
+
+        ## Should the condition codes be updated?
+        -bool set_cc = icode in { IOPQ };
+        +bool set_cc = icode in { IOPQ, IIADDQ };
+
+        ################ Memory Stage    ###################################
+
+
+完成对硬件描述文件 ``seq-full.hcl`` 的修改，我们可通过以下命令编译生成 ``seq-full`` 版本的Y86-64处理器。
+
+.. code-block:: console
+
+        $ make VERSION=full 
+
+我们可用新生成的 ``ssim`` 测试一个包含 ``iaddq`` 指令的Y86-64小程序。可以看到，程序 ``asumi.yo`` 运行成功。
+
+.. code-block:: console
+
+        $ ./ssim -t ../y86-code/asumi.yo
+        Y86-64 Processor: seq-full.hcl
+        137 bytes of code read
+        IF: Fetched irmovq at 0x0.  ra=----, rb=%rsp, valC = 0x100
+        IF: Fetched call at 0xa.  ra=----, rb=----, valC = 0x38
+        Wrote 0x13 to address 0xf8
+        IF: Fetched irmovq at 0x38.  ra=----, rb=%rdi, valC = 0x18
+        IF: Fetched irmovq at 0x42.  ra=----, rb=%rsi, valC = 0x4
+        IF: Fetched call at 0x4c.  ra=----, rb=----, valC = 0x56
+        Wrote 0x55 to address 0xf0
+        IF: Fetched xorq at 0x56.  ra=%rax, rb=%rax, valC = 0x0
+        IF: Fetched andq at 0x58.  ra=%rsi, rb=%rsi, valC = 0x0
+        IF: Fetched jmp at 0x5a.  ra=----, rb=----, valC = 0x83
+        IF: Fetched jne at 0x83.  ra=----, rb=----, valC = 0x63
+        IF: Fetched mrmovq at 0x63.  ra=%r10, rb=%rdi, valC = 0x0
+        IF: Fetched addq at 0x6d.  ra=%r10, rb=%rax, valC = 0x0
+        IF: Fetched iaddq at 0x6f.  ra=----, rb=%rdi, valC = 0x8
+        IF: Fetched iaddq at 0x79.  ra=----, rb=%rsi, valC = 0xffffffffffffffff
+        IF: Fetched jne at 0x83.  ra=----, rb=----, valC = 0x63
+        IF: Fetched mrmovq at 0x63.  ra=%r10, rb=%rdi, valC = 0x0
+        IF: Fetched addq at 0x6d.  ra=%r10, rb=%rax, valC = 0x0
+        IF: Fetched iaddq at 0x6f.  ra=----, rb=%rdi, valC = 0x8
+        IF: Fetched iaddq at 0x79.  ra=----, rb=%rsi, valC = 0xffffffffffffffff
+        IF: Fetched jne at 0x83.  ra=----, rb=----, valC = 0x63
+        IF: Fetched mrmovq at 0x63.  ra=%r10, rb=%rdi, valC = 0x0
+        IF: Fetched addq at 0x6d.  ra=%r10, rb=%rax, valC = 0x0
+        IF: Fetched iaddq at 0x6f.  ra=----, rb=%rdi, valC = 0x8
+        IF: Fetched iaddq at 0x79.  ra=----, rb=%rsi, valC = 0xffffffffffffffff
+        IF: Fetched jne at 0x83.  ra=----, rb=----, valC = 0x63
+        IF: Fetched mrmovq at 0x63.  ra=%r10, rb=%rdi, valC = 0x0
+        IF: Fetched addq at 0x6d.  ra=%r10, rb=%rax, valC = 0x0
+        IF: Fetched iaddq at 0x6f.  ra=----, rb=%rdi, valC = 0x8
+        IF: Fetched iaddq at 0x79.  ra=----, rb=%rsi, valC = 0xffffffffffffffff
+        IF: Fetched jne at 0x83.  ra=----, rb=----, valC = 0x63
+        IF: Fetched ret at 0x8c.  ra=----, rb=----, valC = 0x0
+        IF: Fetched ret at 0x55.  ra=----, rb=----, valC = 0x0
+        IF: Fetched halt at 0x13.  ra=----, rb=----, valC = 0x0
+        32 instructions executed
+        Status = HLT
+        Condition Codes: Z=1 S=0 O=0
+        Changed Register State:
+        %rax:   0x0000000000000000      0x0000abcdabcdabcd
+        %rsp:   0x0000000000000000      0x0000000000000100
+        %rdi:   0x0000000000000000      0x0000000000000038
+        %r10:   0x0000000000000000      0x0000a000a000a000
+        Changed Memory State:
+        0x00f0: 0x0000000000000000      0x0000000000000055
+        0x00f8: 0x0000000000000000      0x0000000000000013
+        ISA Check Succeeds
+
+我们再用 ``ssim`` 运行Y84-64的基准测试程序，来确保我们新添加的 ``iaddq`` 指令不引入任何错误。
+可以看到，所有的Y86-64基准测试程序运行无误。
+
+.. code-block:: console
+
+        $ cd ../y86-code
+        $ make testssim
+        ../seq/ssim -t asum.yo > asum.seq
+        ../seq/ssim -t asumr.yo > asumr.seq
+        ../seq/ssim -t cjr.yo > cjr.seq
+        ../seq/ssim -t j-cc.yo > j-cc.seq
+        ../seq/ssim -t poptest.yo > poptest.seq
+        ../seq/ssim -t pushquestion.yo > pushquestion.seq
+        ../seq/ssim -t pushtest.yo > pushtest.seq
+        ../seq/ssim -t prog1.yo > prog1.seq
+        ../seq/ssim -t prog2.yo > prog2.seq
+        ../seq/ssim -t prog3.yo > prog3.seq
+        ../seq/ssim -t prog4.yo > prog4.seq
+        ../seq/ssim -t prog5.yo > prog5.seq
+        ../seq/ssim -t prog6.yo > prog6.seq
+        ../seq/ssim -t prog7.yo > prog7.seq
+        ../seq/ssim -t prog8.yo > prog8.seq
+        ../seq/ssim -t ret-hazard.yo > ret-hazard.seq
+        grep "ISA Check" *.seq
+        asumr.seq:ISA Check Succeeds
+        asum.seq:ISA Check Succeeds
+        cjr.seq:ISA Check Succeeds
+        j-cc.seq:ISA Check Succeeds
+        poptest.seq:ISA Check Succeeds
+        prog1.seq:ISA Check Succeeds
+        prog2.seq:ISA Check Succeeds
+        prog3.seq:ISA Check Succeeds
+        prog4.seq:ISA Check Succeeds
+        prog5.seq:ISA Check Succeeds
+        prog6.seq:ISA Check Succeeds
+        prog7.seq:ISA Check Succeeds
+        prog8.seq:ISA Check Succeeds
+        pushquestion.seq:ISA Check Succeeds
+        pushtest.seq:ISA Check Succeeds
+        ret-hazard.seq:ISA Check Succeeds
+        rm asum.seq asumr.seq cjr.seq j-cc.seq poptest.seq pushquestion.seq pushtest.seq prog1.seq prog2.seq prog3.seq prog4.seq prog5.seq prog6.seq prog7.seq prog8.seq ret-hazard.seq
+
+
+最后我们再进行最终的回归测试，首先对除去 ``iaddq`` 指令的 ``ssim`` 进行测试。测试结果如下所示，600条ISA检查通过。
+
+.. code-block:: console
+
+        $ cd ../ptest
+        $ make SIM=../seq/ssim
+        ./optest.pl -s ../seq/ssim
+        Simulating with ../seq/ssim
+        All 49 ISA Checks Succeed
+        ./jtest.pl -s ../seq/ssim
+        Simulating with ../seq/ssim
+        All 64 ISA Checks Succeed
+        ./ctest.pl -s ../seq/ssim
+        Simulating with ../seq/ssim
+        All 22 ISA Checks Succeed
+        ./htest.pl -s ../seq/ssim
+        Simulating with ../seq/ssim
+        All 600 ISA Checks Succeed
+
+
+然后再单独对 ``iaddq`` 进行回归测试。测试结果如下所示，756条ISA检查通过。
+
+.. code-block:: console
+
+        $ cd ../ptest
+        $ make SIM=../seq/ssim TFLAGS=-i
+        ./optest.pl -s ../seq/ssim -i
+        Simulating with ../seq/ssim
+        All 58 ISA Checks Succeed
+        ./jtest.pl -s ../seq/ssim -i
+        Simulating with ../seq/ssim
+        All 96 ISA Checks Succeed
+        ./ctest.pl -s ../seq/ssim -i
+        Simulating with ../seq/ssim
+        All 22 ISA Checks Succeed
+        ./htest.pl -s ../seq/ssim -i
+        Simulating with ../seq/ssim
+        All 756 ISA Checks Succeed
+
+至此，Part B实验完成。
