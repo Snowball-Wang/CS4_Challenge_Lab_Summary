@@ -607,10 +607,10 @@ Part B
 ^^^^^^^^
 
 本部分的实验是在 ``sim/seq`` 目录下完成的。
-实验的主要任务是根据课后习题4.51和4.52，修改Y84-64处理器的顺序实现的HCL文件 ``seq-full.hcl`` ，添加一条新的指令 ``iaddq`` 。
+实验的主要任务是根据课后习题4.51和4.52的要求，修改Y86-64处理器的顺序实现的HCL文件 ``seq-full.hcl`` ，添加一条新的指令 ``iaddq`` 。
 
 修改 ``seq-full.hcl``
-''''''''''''''''''''''
+'''''''''''''''''''''
 
 根据练习习题4.3的说明，指令 ``iaddq`` 的编码格式如下所示。
 
@@ -623,10 +623,10 @@ Part B
 明确了指令 ``iaddq`` 的在每一个阶段中的操作，我们就可以对文件 ``seq-full.hcl`` 进行相应的修改。
 
 修改的patch如下所示。首先， ``seq-full.hcl`` 中已经为我们定义好了 ``iaddq`` 命令，但是并没有将其加入到 ``instr_valid`` 中。
-所以我们首先把指令 ``iaddq`` 加入到其中。 
+所以我们首先需要把指令 ``iaddq`` 加入到其中。 
 在取指阶段中， ``iaddq`` 指令既需要读取寄存器 ``rB`` 的值，也需要读取一个常量，所以同时需要 ``need_regids`` 和 ``need_valC`` 控制逻辑。
 ``iaddq`` 会将读取的寄存器 ``rB`` 的值存放在 ``srcB`` 中，并将计算过后的值存放在 ``dstE`` 中。
-在执行阶段， ``iaddq`` 指令的两个输入 ``aluA`` 和 ``aluB`` 分别是 ``valC`` 和 ``valB`` ， ``alufun`` 计算功能保持默认加的操作。
+在执行阶段， ``iaddq`` 指令的两个输入 ``aluA`` 和 ``aluB`` 分别对应的是 ``valC`` 和 ``valB`` ， ``alufun`` 计算功能为默认加的操作。
 同 ``addq`` 指令一样， ``iaddq`` 指令我们也需要根据指令的计算结果对条件码置位，即把 ``iaddq`` 添加到 ``set_cc`` 的控制逻辑里。
 
 .. code-block:: console
@@ -762,7 +762,7 @@ Part B
         0x00f8: 0x0000000000000000      0x0000000000000013
         ISA Check Succeeds
 
-我们再用 ``ssim`` 运行Y84-64的基准测试程序，来确保我们新添加的 ``iaddq`` 指令不引入任何错误。
+我们再用 ``ssim`` 运行Y86-64的基准测试程序，来确保我们新添加的 ``iaddq`` 指令不引入任何错误。
 可以看到，所有的Y86-64基准测试程序运行无误。
 
 .. code-block:: console
@@ -805,7 +805,7 @@ Part B
         rm asum.seq asumr.seq cjr.seq j-cc.seq poptest.seq pushquestion.seq pushtest.seq prog1.seq prog2.seq prog3.seq prog4.seq prog5.seq prog6.seq prog7.seq prog8.seq ret-hazard.seq
 
 
-最后我们再进行最终的回归测试，首先对除去 ``iaddq`` 指令的 ``ssim`` 进行测试。测试结果如下所示，600条ISA检查通过。
+最后我们再进行回归测试，首先对除去 ``iaddq`` 指令的 ``ssim`` 进行测试。测试结果如下所示，600条ISA检查通过。
 
 .. code-block:: console
 
