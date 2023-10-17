@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'CS4_Challenge_Lab_Notes'
-copyright = '2022, Snowball Wang'
+copyright = '2023, Snowball Wang'
 author = 'Snowball Wang'
 
 # The full version, including alpha/beta/rc tags
