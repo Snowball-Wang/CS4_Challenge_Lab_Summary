@@ -845,3 +845,798 @@ Part B
         All 756 ISA Checks Succeed
 
 至此，Part B实验完成。
+
+Part C
+^^^^^^^^
+
+本部分的实验是在 ``sim/pipe`` 目录下完成的。
+本实验的任务是修改 ``ncopy.ys`` 和 ``pipe-full.hcl`` 文件，从而能够让 ``ncopy.ys`` 在自定义的流水线处理器跑得越快越好。
+
+函数 ``ncopy`` 的定义在源文件 ``sim/pipe/ncopy.c`` ，C实现如下所示。其功能是将长度为 ``len`` 的数组 ``src`` 复制到非重叠的数组 ``dst`` 中，最终结果返回的是数组 ``src`` 中正整数的个数。
+
+.. code-block:: c
+
+        /*
+        * ncopy - copy src to dst, returning number of positive ints
+        * contained in src array.
+        */
+        word_t ncopy(word_t *src, word_t *dst, word_t len)
+        {
+            word_t count = 0;
+            word_t val;
+
+            while(len > 0) {
+                val = *src++;
+                *dst++ = val;
+                if (val > 0)
+                    count++;
+                len--;
+            }
+            return count;
+        }
+
+实验还提供了一版基本的 ``ncopy.ys`` ，如下所示。
+
+.. code-block:: asm
+
+        ##################################################################
+        # ncopy.ys - Copy a src block of len words to dst.
+        # Return the number of positive words (>0) contained in src.
+        #
+        # Include your name and ID here.
+        #
+        # Describe how and why you modified the baseline code.
+        #
+        ##################################################################
+        # Do not modify this portion
+        # Function prologue.
+        # %rdi = src, %rsi = dst, %rdx = len
+        ncopy:
+
+        ##################################################################
+        # You can modify this portion
+                # Loop header
+                xorq %rax,%rax          # count = 0;
+                andq %rdx,%rdx          # len <= 0?
+                jle Done                # if so, goto Done:
+
+        Loop:   mrmovq (%rdi), %r10     # read val from src...
+                rmmovq %r10, (%rsi)     # ...and store it to dst
+                andq %r10, %r10         # val <= 0?
+                jle Npos                # if so, goto Npos:
+                irmovq $1, %r10
+                addq %r10, %rax         # count++
+        Npos:   irmovq $1, %r10
+                subq %r10, %rdx         # len--
+                irmovq $8, %r10
+                addq %r10, %rdi         # src++
+                addq %r10, %rsi         # dst++
+                andq %rdx,%rdx          # len > 0?
+                jg Loop                 # if so, goto Loop:
+        ##################################################################
+        # Do not modify the following section of code
+        # Function epilogue.
+        Done:
+                ret
+        ##################################################################
+        # Keep the following label at the end of your function
+        End:
+
+源文件 ``pipe-full.hcl`` 包含了 ``PIPE`` 流水线设计的HCL代码，其中有着关于指令 ``IIADDQ`` 的常量定义。
+
+
+编程规则
+''''''''''
+
+在正式开始实验之前，我们需要了解一些Part C部分要求的编程规则。
+
+* ``ncopy.ys`` 必须对任意长度的数组都有效。我们不可以通过将数组长度写死的方式来实现 ``ncopy.ys`` 。
+* YIS运行的 ``ncopy.ys`` 必须工作正常。即函数能够正确地将数组 ``src`` 的内容拷贝到 ``dst`` 中，同时返回数组 ``src`` 正确数量的正整数个数。
+* 生成的 ``ncopy`` 二进制文件的大小不能超过1000字节。
+* ``pipe-full.hcl`` 的实现必须通过 ``../y86-64`` 和 ``../ptest`` 中的回归测试。 ``iaddq`` 指令的测试可以忽略。
+
+在遵守上述规则的基础上，我们可以按照我们自己的想法去实现指令 ``iaddq`` ，或者是调整 ``ncopy.ys`` 里的指令顺序。
+我们可以参考第五章里的循环展开的技巧，来让设计的流水线处理器更快地运行函数 ``ncopy`` 。
+
+编译和运行程序
+'''''''''''''''
+
+为了测试我们修改后的程序和流水线处理器，实验提供了 ``gen-driver.pl`` 脚本，可以通过以下命令，生成针对任意长度的数组的测试驱动程序。
+
+.. code-block:: console
+
+        $ make drivers
+
+
+上述命令可生成两个测试驱动用例：
+
+* ``sdriver.yo`` 用4个元素的小数组测试函数 ``ncopy`` 。如果程序运行正确， ``%rax`` 返回2。
+* ``ldriver.yo`` 用63个元素的大数组测试函数 ``ncopy`` 。如果程序运行正确， ``%rax`` 返回31(0x1f)。
+
+我们可通过 ``./psim -g sdriver.yo`` 运行GUI模式来查看4个元素的小数组在流水线处理器的运行状态。
+同理，也可通过 ``./psim -g ldriver.yo`` 查看63个元素的大数组在流水线处理器的运行状态。
+
+每次修改 ``ncopy.ys`` 程序，都需要 ``make drivers`` 重新编译测试驱动程序。
+
+每次修改流水线HCL文件 ``pipe-full.hcl`` ，都需要 ``make psim VERSION=full`` 重新编译模拟器。
+
+如果向每次都重新编译模拟器和测试驱动程序，则敲入命令 ``make VERSION=full`` 即可。
+
+一旦我们编译的模拟器和修改的 ``ncopy.ys`` 通过了上述两个两个数组长度的测试，我们可通过以下命令来测试程序的正确性和性能：
+
+* 通过 ``../misc/yis sdriver.yo`` 测试驱动程序是否能够在ISA模拟器上正确运行。
+* 通过 ``./correctness.pl`` 测试不同长度的数组是否能够在ISA模拟器上正确运行。
+* 通过 ``(cd ../y86-code; make testpsim)`` 测试流水线处理器在基准测试程序上的性能。
+* 通过 ``(cd ../ptest; make SIM=../pipe/psim TFLAG=-i)`` 运行包含 ``iaddq`` 指令的流水线处理器的回归测试。
+
+
+程序性能评分标准
+'''''''''''''''
+
+实验用CPE(cycles per element)来评价函数 ``ncopy`` 执行的性能。
+也就是说，如果函数需要C个时钟复制N个元素的数组，那么这个函数的CPE即为C/N。
+流水线模拟器会展示程序所消耗的全部时钟数。
+例如，当输入的数组长度为63时，实验代码里 ``ncopy`` 跑在基础版的流水线上需要消耗897个时钟数，对应的CPE是897/63=14.24。
+实验会计算我们修改过后的流水线处理器和 ``ncopy`` 函数在数组长度为1到64的平均消耗的时钟数。我们可通过 ``./benchmark.pl`` 测试程序的性能。
+
+此部分实验的得分公式如下图所示。若要得到满分60，则平均CPE要低于7.5。
+
+.. image:: ./../_images/csapp/archlab_grade.png
+
+
+实验思路及实现
+'''''''''''''''
+
+首先，我们按照实验步骤把实验提供的基准版流水线处理器的模拟器编译运行起来。
+
+.. code-block:: console
+
+        $ cd ../sim
+        $ make all # build necessary files like YAS and YIS
+        $ cd pipe/
+        $ make VERSION=full # build unchanged pipe-full simulator
+        $ ./correctness.pl # test function ncopy with yis
+        $ ./benchmark.pl # benchmark function ncopy on pipe-full simulator
+        ...
+        Average CPE     15.18
+        Score   0.0/60.0
+
+可以看到，基准版的流水线运行原始版本的 ``ncopy`` 函数的平均CPE只有15.18，远远没有达到最极致的性能。
+接下来，我们就通过修改流水线处理器和 ``ncopy`` 函数的汇编实现，来让函数 ``ncopy`` 的CPE降到尽可能的低。
+
+添加 ``iaddq`` 指令
+""""""""""""""""""
+
+查看函数 ``ncopy.ys`` 的汇编实现。可以看到，对于变量值的增减，都是先通过 ``irmovq`` 指令将立即数放入指定寄存器中，再完成寄存器的加减操作。
+同SEQ处理器实现一样，这里我们可以为PIPE处理器添加 ``iaddq`` 指令来减少指令数量。修改的 ``pipe-full.hcl`` 如下所示：
+
+.. code-block:: console
+
+        $ git diff pipe-full.hcl
+        diff --git a/sim/pipe/pipe-full.hcl b/sim/pipe/pipe-full.hcl
+        index 837eb49..c261173 100644
+        --- a/sim/pipe/pipe-full.hcl
+        +++ b/sim/pipe/pipe-full.hcl
+        @@ -158,7 +158,7 @@ word f_ifun = [
+        # Is instruction valid?
+        bool instr_valid = f_icode in
+                { INOP, IHALT, IRRMOVQ, IIRMOVQ, IRMMOVQ, IMRMOVQ,
+        -         IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ };
+        +         IOPQ, IJXX, ICALL, IRET, IPUSHQ, IPOPQ, IIADDQ };
+
+        # Determine status code for fetched instruction
+        word f_stat = [
+        @@ -171,11 +171,11 @@ word f_stat = [
+        # Does fetched instruction require a regid byte?
+        bool need_regids =
+                f_icode in { IRRMOVQ, IOPQ, IPUSHQ, IPOPQ,
+        -                    IIRMOVQ, IRMMOVQ, IMRMOVQ };
+        +                    IIRMOVQ, IRMMOVQ, IMRMOVQ, IIADDQ };
+
+        # Does fetched instruction require a constant word?
+        bool need_valC =
+        -       f_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IJXX, ICALL };
+        +       f_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IJXX, ICALL, IIADDQ };
+
+        # Predict next value of PC
+        word f_predPC = [
+        @@ -195,14 +195,14 @@ word d_srcA = [
+
+        ## What register should be used as the B source?
+        word d_srcB = [
+        -       D_icode in { IOPQ, IRMMOVQ, IMRMOVQ  } : D_rB;
+        +       D_icode in { IOPQ, IRMMOVQ, IMRMOVQ, IIADDQ  } : D_rB;
+                D_icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
+                1 : RNONE;  # Don't need register
+        ];
+
+        ## What register should be used as the E destination?
+        word d_dstE = [
+        -       D_icode in { IRRMOVQ, IIRMOVQ, IOPQ} : D_rB;
+        +       D_icode in { IRRMOVQ, IIRMOVQ, IOPQ, IIADDQ} : D_rB;
+                D_icode in { IPUSHQ, IPOPQ, ICALL, IRET } : RRSP;
+                1 : RNONE;  # Don't write any register
+        ];
+        @@ -239,7 +239,7 @@ word d_valB = [
+        ## Select input A to ALU
+        word aluA = [
+                E_icode in { IRRMOVQ, IOPQ } : E_valA;
+        -       E_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ } : E_valC;
+        +       E_icode in { IIRMOVQ, IRMMOVQ, IMRMOVQ, IIADDQ } : E_valC;
+                E_icode in { ICALL, IPUSHQ } : -8;
+                E_icode in { IRET, IPOPQ } : 8;
+                # Other instructions don't need ALU
+        @@ -248,7 +248,7 @@ word aluA = [
+        ## Select input B to ALU
+        word aluB = [
+                E_icode in { IRMMOVQ, IMRMOVQ, IOPQ, ICALL,
+        -                    IPUSHQ, IRET, IPOPQ } : E_valB;
+        +                    IPUSHQ, IRET, IPOPQ, IIADDQ } : E_valB;
+                E_icode in { IRRMOVQ, IIRMOVQ } : 0;
+                # Other instructions don't need ALU
+        ];
+        @@ -260,7 +260,7 @@ word alufun = [
+        ];
+
+        ## Should the condition codes be updated?
+        -bool set_cc = E_icode == IOPQ &&
+        +bool set_cc = E_icode in { IOPQ, IIADDQ } &&
+                # State changes only during normal operation
+                !m_stat in { SADR, SINS, SHLT } && !W_stat in { SADR, SINS, SHLT };
+       
+
+对应的 ``ncopy.ys`` 也可将相应的 ``irmovq + rrmovq `` 指令对替换成 ``iaddq`` 指令。
+同时，指令 ``mrmovq (%rdi), %r10`` 与指令 ``rmmovq %r10, (%rsi)`` 存在着明显的加载使用冲突，会浪费额外的一个时钟周期。
+所以我们可以调整指令的顺序，把增加地址的指令放置于两条指令中，节省一个时钟周期。
+
+.. code-block:: asm
+
+        ncopy:
+
+        ##################################################################
+        # You can modify this portion
+                # Loop header
+                xorq %rax,%rax          # count = 0;
+                andq %rdx,%rdx          # len <= 0?
+                jle Done                # if so, goto Done:
+
+        Loop:   mrmovq (%rdi), %r10     # read val from src...
+                iaddq $8, %rdi          # src++
+                rmmovq %r10, (%rsi)     # ...and store it to dst
+                iaddq $8, %rsi          # dst++
+                andq %r10, %r10         # val <= 0?
+                jle Npos                # if so, goto Npos:
+                iaddq $1, %rax          # count++
+        Npos:   iaddq $-1, %rdx         # len--
+                andq %rdx,%rdx          # len > 0?
+                jg Loop                 # if so, goto Loop:
+        ##################################################################
+        # Do not modify the following section of code
+        # Function epilogue.
+        Done:
+                ret
+
+``make VERSION=full`` 重新编译流水线模拟器和测试驱动程序，运行 ``./correctness.pl`` 显示程序正确，再次运行 ``./benchmark.pl`` 显示如下：
+
+.. code-block:: console
+
+        $ ./benchmark.pl
+        ...
+        Average CPE     11.70
+        Score   0.0/60.0
+
+``ncopy.ys`` 中的指令替换成 ``iaddq`` 后，程序的平均CPE从15.18下降到11.70，有了不错的提高，但离及格分数线10.50还有不小的差距。
+
+我们必须使用其它的技巧，来降低程序运行的平均CPE。
+
+
+循环展开
+"""""""""
+
+根据提示，我们可采用5.8节中的循环展开（loop unrolling）进一步优化程序。
+
+循环展开的本质是，通过增加每个循环中处理数据的数量，降低循环和条件分支的次数，并结合现代处理器中流水线多个硬件单元的并行处理能力，提升程序的运行速率。
+当然，循环展开不是没有代价的。展开即意味者每个循环中的代码量的增加，从而生成的二进制文件的大小也会增加。
+
+针对上述 ``ncopy.ys`` ，我们可进行两次循环展开，即在每个循环里处理两个元素，循环的步长调整为2。
+同时也要对循环的剩余部分进行妥善的处理，即循环次数不被2整除时，我们要处理剩余的1个数组元素。
+
+两次循环展开的汇编代码如下：
+
+.. code-block:: asm
+
+        ncopy:
+
+        ##################################################################
+        # You can modify this portion
+                # Loop header
+        Start:
+                iaddq $-2, %rdx         # len >= 2?
+                jge Loop1               # if len >= 2, goto Loop1
+                jmp Tail                # if so, goto Tail
+
+        Loop1:
+                mrmovq (%rdi), %r10     # read val1 from src[0]
+                mrmovq 8(%rdi), %r11    # read val2 from src[1]
+                rmmovq %r10, (%rsi)     # store val1 to dst[0]
+                andq %r10, %r10         # val1 <= 0?
+                jle Loop2               # if so, goto Loop2
+                iaddq $1, %rax          # count++
+        Loop2:
+                rmmovq %r11, 8(%rsi)    # store val2 to dst[1]
+                andq %r11, %r11         # val2 <= 0?
+                jle Loop                # if so, goto Loop
+                iaddq $1, %rax          # count++
+        Loop:
+                iaddq $16, %rdi         # src+2
+                iaddq $16, %rsi         # dst+2
+                jmp  Start
+        Tail:
+                iaddq $1, %rdx          # len == 1?
+                jl Done                 # len < 1, goto Done
+                mrmovq (%rdi), %r10     # read val from src[0]
+                iaddq $8, %rdi          # src++
+                rmmovq %r10, (%rsi)     # store val to dst[0]
+                iaddq $8, %rsi          # dst++
+                andq %r10, %r10         # val <=0 ?
+                jle Done
+                iaddq $1, %rax          # count++
+        ##################################################################
+        # Do not modify the following section of code
+        # Function epilogue.
+        Done:
+                ret
+
+可以看到，相较于之前的 ``ncopy.ys`` ，两次循环展开的版本里包含两个循环 ``Loop1`` 和 ``Loop2`` ，我们可以在 ``Loop1`` 中完成两个数组元素的读取，
+在 ``Loop2`` 中再处理第二个元素，这样就避免了加载使用冲突造成的1个时钟周期的浪费。
+同时， ``iaddq`` 指令会根据执行结果设置条件码，所以无需后再接指令 ``andq`` 来读取条件码的值。
+
+运行 ``make VERSION=full`` 重新编译流水线模拟器，运行 ``./correctness.pl`` 验证程序测试集通过，运行 ``./benchmark.pl`` 显示如下：
+
+.. code-block:: console
+
+        $ ./benchmark.pl
+        ...
+        Average CPE     9.26
+        Score 24.8/60.0
+
+可以看到，对 ``ncopy.ys`` 进行两次循环展开后，我们的平均CPE从11.70下降到9.26，得到了24.8分。 ``ncopy.yo`` 的大小也涨到了220字节。
+
+我们可再进一步，对 ``ncopy.ys`` 进行四次循环展开，其汇编代码如下：
+
+.. code-block:: asm
+
+        ncopy:
+
+        ##################################################################
+        # You can modify this portion
+                # Loop header
+        Start:
+                iaddq $-4, %rdx         # len >= 4?
+                jge Loop1               # if len >= 4, goto Loop1
+                jmp Tail                # if so, goto Tail
+
+        Loop1:
+                mrmovq (%rdi), %r10     # read val1 from src[0]
+                mrmovq 8(%rdi), %r11    # read val2 from src[1]
+                rmmovq %r10, (%rsi)     # store val1 to dst[0]
+                andq %r10, %r10         # val1 <= 0?
+                jle Loop2               # if so, goto Loop2
+                iaddq $1, %rax          # count++
+        Loop2:
+                mrmovq 16(%rdi), %r10   # read val3 from src[2]
+                rmmovq %r11, 8(%rsi)    # store val2 to dst[1]
+                andq %r11, %r11         # val2 <= 0?
+                jle Loop3               # if so, goto Loop3
+                iaddq $1, %rax          # count++
+        Loop3:
+                mrmovq 24(%rdi), %r11   # read val4 from src[3]
+                rmmovq %r10, 16(%rsi)   # store val3 to dst[2]
+                andq %r10, %r10         # val3 <= 0?
+                jle Loop4               # if so, goto Loop4
+                iaddq $1, %rax          # count++
+        Loop4:
+                rmmovq %r11, 24(%rsi)   # store val4 to dst[3]
+                andq %r11, %r11         # val4 <= 0?
+                jle Loop                # if so, goto Loop
+                iaddq $1, %rax          # count++
+        Loop:
+                iaddq $32, %rdi         # src+4
+                iaddq $32, %rsi         # dst+4
+                jmp  Start
+        Tail:
+                iaddq $4, %rdx          # restore %rdx
+                jg Tail1                # if len > 0, goto Tail1
+                jmp Done                # if len == 0, goto Done
+        Tail1:
+                mrmovq (%rdi), %r10     # read val1 from src[0]
+                mrmovq 8(%rdi), %r11    # read val2 from src[1] -- potential overread
+                rmmovq %r10, (%rsi)     # store val1 to dst[0]
+                andq %r10, %r10         # val1 <= 0?
+                jle Tail2               # if so, goto Tail2
+                iaddq $1, %rax          # count++
+        Tail2:
+                iaddq $-1, %rdx         # len--
+                jle Done                # if left len is 1, goto Done
+                rmmovq %r11, 8(%rsi)    # store val2 to dst[1]
+                mrmovq 16(%rdi), %r10   # read val3 from src[2] -- potential overread
+                andq %r11, %r11         # val2 <= 0?
+                jle Tail3               # if so, goto Tail3
+                iaddq $1, %rax          # count++
+        Tail3:
+                iaddq $-1, %rdx         # len--
+                jle Done                # if left len is 2, goto Done
+                rmmovq %r10, 16(%rsi)   # store val3 to dst[2]
+                andq %r10, %r10         # val3 <= 0?
+                jle Done                # if so, goto Done
+                iaddq $1, %rax          # count++
+        ##################################################################
+        # Do not modify the following section of code
+        # Function epilogue.
+        Done:
+                ret
+
+可以看到，四次循环展开的步长为4，所以对应寄存器 ``%rdi`` 和 ``%rsi`` 每次增加32。
+在对四次循环的剩余元素处理的过程中，需注意我省略了数组指针的增加，其并不会影响程序的正确性。
+
+进行四次循环展开后，程序的平均CPE从9.26下降到了8.18，得分为46.4。但程序大小从220字节涨到了411字节。
+
+同样的套路，我们对 ``ncopy.ys`` 进行八次循环展开，程序的平均CPE从8.18下降到了7.98，得分为50.3，程序大小从411字节增长到815字节。
+我们可继续对 ``ncopy.ys`` 进行十六次循环展开，但很显然程序的大小必然会超过规定的1000字节，并且我们的性能测试集的数组长度为0~64，当循环展开的次数过多时，对于小长度数组的CPE会增加，相对而言大长度数组收获的增益对于整体的CPE而言的边际效用就有限。
+
+那么50.3分就是我们的极限了嘛？正如刚刚我们提到的， ``benchmark.pl`` 程序的测试集的数组长度为0~64。我们根据上述的各个测试结果绘制出以下不同优化场景下不同数组长度的CPE曲线图。
+
+.. image:: ./../_images/csapp/archlab_cpe.png
+
+我们着重关注黄色和浅蓝色曲线。对应八次循环展开的浅蓝色曲线，在数组长度小于8时，其CPE的表现要比四次循环展开的黄色曲线差。
+同时我们可以看到浅蓝色曲线呈现出一个以8为周期的，CPE区间内显著增长的趋势。比如说在数组长度9~15，17~23，25~31内，其CPE的值不断增长。
+增长的原因也显而易见，我们在处理循环剩余部分时，采用的是线性递减的方式。即每次给剩余的数组长度减1，如果数组长度减为0，即返回。
+这样，对于余数为7的数组而言，剩余部分要经过7次判断后才能处理完毕，并且每次都有条件跳转指令2个时钟周期的损耗。
+
+那么我们可不可以这部分余数处理的代码做进一步优化？这里我参考了 `文章 <https://mcginn7.github.io/2020/02/21/CSAPP-archlab/>`_ 的做法，做了以下两点的优化。
+
+* 消除原先每个余数处理过程中的长度减1和判断是否为0的操作，通过二分法的方法直接跳转到对应数组元素个数的代码块处理。
+* 由于指令 ``mrmovq`` 和 ``rmmovq`` 并不会设置条件码的值，所以我们可将当前元素的条件跳转判断插入到下一元素的 ``mrmovq`` 和 ``rmmovq`` 指令中，消除掉其中的加载使用冲突。
+
+对应的汇编代码如下所示：
+
+.. code-block:: asm
+
+        ##################################################################
+        # Do not modify this portion
+        # Function prologue.
+        # %rdi = src, %rsi = dst, %rdx = len
+        ncopy:
+
+        ##################################################################
+        # You can modify this portion
+                # Loop header
+        Start:
+                iaddq $-8, %rdx         # len >= 8?
+                jge Loop1               # if len >= 8, goto Loop1
+                jmp Tail                # if so, goto Tail
+
+        Loop1:
+                mrmovq (%rdi), %r10     # read val1 from src[0]
+                mrmovq 8(%rdi), %r11    # read val2 from src[1]
+                rmmovq %r10, (%rsi)     # store val1 to dst[0]
+                andq %r10, %r10         # val1 <= 0?
+                jle Loop2               # if so, goto Loop2
+                iaddq $1, %rax          # count++
+        Loop2:
+                mrmovq 16(%rdi), %r10   # read val3 from src[2]
+                rmmovq %r11, 8(%rsi)    # store val2 to dst[1]
+                andq %r11, %r11         # val2 <= 0?
+                jle Loop3               # if so, goto Loop3
+                iaddq $1, %rax          # count++
+        Loop3:
+                mrmovq 24(%rdi), %r11   # read val4 from src[3]
+                rmmovq %r10, 16(%rsi)   # store val3 to dst[2]
+                andq %r10, %r10         # val3 <= 0?
+                jle Loop4               # if so, goto Loop4
+                iaddq $1, %rax          # count++
+        Loop4:
+                mrmovq 32(%rdi), %r10   # read val5 from src[4]
+                rmmovq %r11, 24(%rsi)   # store val4 to dst[3]
+                andq %r11, %r11         # val4 <= 0?
+                jle Loop5               # if so, goto Loop5
+                iaddq $1, %rax          # count++
+        Loop5:
+                mrmovq 40(%rdi), %r11   # read val6 from src[5]
+                rmmovq %r10, 32(%rsi)   # store val5 to dst[4]
+                andq %r10, %r10         # val5 <= 0?
+                jle Loop6               # if so, goto Loop6
+                iaddq $1, %rax          # count++
+        Loop6:
+                mrmovq 48(%rdi), %r10   # read val7 from src[6]
+                rmmovq %r11, 40(%rsi)   # store val6 to dst[5]
+                andq %r11, %r11         # val6 <= 0?
+                jle Loop7               # if so, goto Loop7
+                iaddq $1, %rax          # count++
+        Loop7:
+                mrmovq 56(%rdi), %r11   # read val8 from src[7]
+                rmmovq %r10, 48(%rsi)   # store val7 to dst[6]
+                andq %r10, %r10         # val7 <= 0?
+                jle Loop8               # if so, goto Loop8
+                iaddq $1, %rax          # count++
+        Loop8:
+                rmmovq %r11, 56(%rsi)   # store val8 to dst[7]
+                andq %r11, %r11         # val8 <= 0?
+                jle Loop                # if so, goto Loop
+                iaddq $1, %rax          # count++
+        Loop:
+                iaddq $64, %rdi         # src+8
+                iaddq $64, %rsi         # dst+8
+                jmp  Start
+        Tail:
+                iaddq $8, %rdx          # restore %rdx
+                jg Tail_jump            # if len > 0, goto Tail_jump
+                ret
+        Tail_jump:
+                iaddq $-4, %rdx
+                jl Tail_left            # len < 4
+                jg Tail_right           # len > 4
+                jmp Tail4               # len == 4
+        Tail_left:
+                iaddq $2, %rdx
+                jl Tail1                # len == 1
+                jg Tail3                # len == 3, warning: cond codes will pass down
+                jmp Tail2               # len == 2
+        Tail_right:
+                iaddq $-2, %rdx
+                jl Tail5                # len == 5
+                jg Tail7                # len == 7
+                jmp Tail6               # len == 6
+        Tail7:
+                mrmovq 48(%rdi), %r9    # read val7 from src[6]
+                rmmovq %r9, 48(%rsi)    # store val7 to dst[6]
+                andq %r9, %r9
+        Tail6:
+                mrmovq 40(%rdi), %r9    # read val6 from src[5]
+                jle Tail6_1             # val7 <= 0?
+                iaddq $1, %rax          # count++
+        Tail6_1:
+                rmmovq %r9, 40(%rsi)    # store val6 to dst[5]
+                andq %r9, %r9
+        Tail5:
+                mrmovq 32(%rdi), %r9    # read val5 from src[4]
+                jle Tail5_1             # val6 <= 0?
+                iaddq $1, %rax          # count++
+        Tail5_1:
+                rmmovq %r9, 32(%rsi)    # store val5 to dst[4]
+                andq %r9, %r9
+        Tail4:
+                mrmovq 24(%rdi), %r9    # read val4 from src[3]
+                jle Tail4_1             # val5 <= 0?
+                iaddq $1, %rax          # count++
+        Tail4_1:
+                rmmovq %r9, 24(%rsi)    # store val4 to dst[3]
+                andq %r9, %r9
+        Tail3:
+                andq %r9, %r9           # indispensable because cond code is set when jumping from Tail_left
+                mrmovq 16(%rdi), %r9    # read val3 from src[2]
+                jle Tail3_1             # val4 <= 0?
+                iaddq $1, %rax          # count++
+        Tail3_1:
+                rmmovq %r9, 16(%rsi)    # store val3 to dst[2]
+                andq %r9, %r9
+        Tail2:
+                mrmovq 8(%rdi), %r9     # read val2 from src[1]
+                jle Tail2_1             # val3 <= 0?
+                iaddq $1, %rax          # count++
+        Tail2_1:
+                rmmovq %r9, 8(%rsi)     # store val2 to dst[1]
+                andq %r9, %r9
+        Tail1:
+                mrmovq (%rdi), %r9      # read val1 from src[0]
+                jle Tail1_1             # val2 <= 0?
+                iaddq $1, %rax
+        Tail1_1:
+                rmmovq %r9, (%rsi)      # store val1 to dst[0]
+                andq %r9, %r9           # val1 <= 0?
+                jle Done                # if so, goto Done
+                iaddq $1, %rax          # count++
+        ##################################################################
+        # Do not modify the following section of code
+        # Function epilogue.
+        Done:
+                ret
+        ##################################################################
+        # Keep the following label at the end of your function
+        End:
+        #/* $end ncopy-ys */
+
+
+需要特别注意的是，上述代码中余数为3的情况。
+在 ``Tail3`` 中我们额外添加了一条 ``andq %r9, %r9`` 语句，这并不多余，因为当余数为3时，程序在 ``Tail_jump`` 中设置了条件码，这个条件码会影响到 ``Tail3`` 中的 ``Tail3_1`` 条件跳转的判断，导致返回的正数值会额外加1。
+同时，在余数阶段所有的变量值使用的寄存器为 ``%r9`` ，就是刻意与八次循环展开中使用的 ``%r10`` 和 ``%r11`` 区分开，避免在循环展开中计算的寄存器值影响到余数阶段的寄存器值。
+如果不做上述两个调整， ``./correctness.pl`` 运行结果会显示余数为3的数组出现 ``Bad count`` 的错误。
+
+进行上述优化后，程序的平均CPE从7.98下降到了7.82，得分为53.6。程序大小稍稍降低，为806字节。
+
+那有没有可能把CPE优化到7.5以下呢？ 参照 `文章 <https://zhuanlan.zhihu.com/p/77072339>`_ 的做法，我们采用十次循环展开，并对余数部分使用三叉树进行搜索，其代码如下：
+
+.. code-block:: asm
+
+        ncopy:
+
+        ##################################################################
+        # You can modify this portion
+                # Loop header
+                iaddq $-10, %rdx        # len >= 10?
+                jl Tail                 # if so, goto Tail
+
+        Loop1:
+                mrmovq (%rdi), %r10     # read val1 from src[0]
+                mrmovq 8(%rdi), %r11    # read val2 from src[1]
+                rmmovq %r10, (%rsi)     # store val1 to dst[0]
+                andq %r10, %r10         # val1 <= 0?
+                jle Loop2               # if so, goto Loop2
+                iaddq $1, %rax          # count++
+        Loop2:
+                mrmovq 16(%rdi), %r10   # read val3 from src[2]
+                rmmovq %r11, 8(%rsi)    # store val2 to dst[1]
+                andq %r11, %r11         # val2 <= 0?
+                jle Loop3               # if so, goto Loop3
+                iaddq $1, %rax          # count++
+        Loop3:
+                mrmovq 24(%rdi), %r11   # read val4 from src[3]
+                rmmovq %r10, 16(%rsi)   # store val3 to dst[2]
+                andq %r10, %r10         # val3 <= 0?
+                jle Loop4               # if so, goto Loop4
+                iaddq $1, %rax          # count++
+        Loop4:
+                mrmovq 32(%rdi), %r10   # read val5 from src[4]
+                rmmovq %r11, 24(%rsi)   # store val4 to dst[3]
+                andq %r11, %r11         # val4 <= 0?
+                jle Loop5               # if so, goto Loop5
+                iaddq $1, %rax          # count++
+        Loop5:
+                mrmovq 40(%rdi), %r11   # read val6 from src[5]
+                rmmovq %r10, 32(%rsi)   # store val5 to dst[4]
+                andq %r10, %r10         # val5 <= 0?
+                jle Loop6               # if so, goto Loop6
+                iaddq $1, %rax          # count++
+        Loop6:
+                mrmovq 48(%rdi), %r10   # read val7 from src[6]
+                rmmovq %r11, 40(%rsi)   # store val6 to dst[5]
+                andq %r11, %r11         # val6 <= 0?
+                jle Loop7               # if so, goto Loop7
+                iaddq $1, %rax          # count++
+        Loop7:
+                mrmovq 56(%rdi), %r11   # read val8 from src[7]
+                rmmovq %r10, 48(%rsi)   # store val7 to dst[6]
+                andq %r10, %r10         # val7 <= 0?
+                jle Loop8               # if so, goto Loop8
+                iaddq $1, %rax          # count++
+        Loop8:
+                mrmovq 64(%rdi), %r10   # read val9 from src[8]
+                rmmovq %r11, 56(%rsi)   # store val8 to dst[7]
+                andq %r11, %r11         # val8 <= 0?
+                jle Loop9               # if so, goto Loop9
+                iaddq $1, %rax          # count++
+        Loop9:
+                mrmovq 72(%rdi), %r11   # read val10 from src[9]
+                rmmovq %r10, 64(%rsi)   # store val9 to dst[8]
+                andq %r10, %r10         # val9 <= 0?
+                jle Loop10              # if so, goto Loop10
+                iaddq $1, %rax          # count++
+        Loop10:
+                rmmovq %r11, 72(%rsi)   # store val10 to dst[9]
+                andq %r11, %r11         # val10 <= 0?
+                jle Loop                # if so, goto Loop
+                iaddq $1, %rax          # count++
+        Loop:
+                iaddq $80, %rdi         # src+10
+                iaddq $80, %rsi         # dst+10
+                iaddq $-10, %rdx        # len = len -10
+                jge Loop1               # goto Loop1
+        Tail:
+                iaddq $7, %rdx          # len <= 3
+                jl Tail_left
+                jg Tail_right
+                jmp Tail3               # len == 3
+        Tail_left:
+                iaddq $2, %rdx
+                je Tail1                # len == 1
+                iaddq $-1, %rdx
+                je Tail2                # len == 2
+                ret                     # len == 0
+        Tail_right:
+                iaddq $-3, %rdx
+                jg Tail_right2          # len > 6
+                je Tail6                # len == 6
+                iaddq $1, %rdx          # the left tree of right tree
+                je Tail5                # len == 5
+                jmp Tail4               # len == 4
+        Tail_right2:
+                iaddq $-2, %rdx
+                jl Tail7                # len == 7
+                je Tail8                # len == 8
+        # len == 9
+        Tail9:
+                mrmovq 64(%rdi), %r9    # read val9 from src[8]
+                rmmovq %r9, 64(%rsi)    # store val9 to dst[8]
+                andq %r9, %r9
+        Tail8:
+                mrmovq 56(%rdi), %r9    # read val8 from src[7]
+                jle Tail8_1             # val9 <= 0?
+                iaddq $1, %rax          # count++
+        Tail8_1:
+                rmmovq %r9, 56(%rsi)    # store val8 to dst[7]
+                andq %r9, %r9
+        Tail7:
+                mrmovq 48(%rdi), %r9    # read val7 from src[6]
+                jle Tail7_1             # val8 <= 0?
+                iaddq $1, %rax          # count++
+        Tail7_1:
+                rmmovq %r9, 48(%rsi)    # store val7 to dst[6]
+                andq %r9, %r9
+        Tail6:
+                mrmovq 40(%rdi), %r9    # read val6 from src[5]
+                jle Tail6_1             # val7 <= 0?
+                iaddq $1, %rax          # count++
+        Tail6_1:
+                rmmovq %r9, 40(%rsi)    # store val6 to dst[5]
+                andq %r9, %r9
+        Tail5:
+                mrmovq 32(%rdi), %r9    # read val5 from src[4]
+                jle Tail5_1             # val6 <= 0?
+                iaddq $1, %rax          # count++
+        Tail5_1:
+                rmmovq %r9, 32(%rsi)    # store val5 to dst[4]
+                andq %r9, %r9
+        Tail4:
+                mrmovq 24(%rdi), %r9    # read val4 from src[3]
+                jle Tail4_1             # val5 <= 0?
+                iaddq $1, %rax          # count++
+        Tail4_1:
+                rmmovq %r9, 24(%rsi)    # store val4 to dst[3]
+                andq %r9, %r9
+        Tail3:
+                mrmovq 16(%rdi), %r9    # read val3 from src[2]
+                jle Tail3_1             # val4 <= 0?
+                iaddq $1, %rax          # count++
+        Tail3_1:
+                rmmovq %r9, 16(%rsi)    # store val3 to dst[2]
+                andq %r9, %r9
+        Tail2:
+                mrmovq 8(%rdi), %r9     # read val2 from src[1]
+                jle Tail2_1             # val3 <= 0?
+                iaddq $1, %rax          # count++
+        Tail2_1:
+                rmmovq %r9, 8(%rsi)     # store val2 to dst[1]
+                andq %r9, %r9
+        Tail1:
+                mrmovq (%rdi), %r9      # read val1 from src[0]
+                jle Tail1_1             # val2 <= 0?
+                iaddq $1, %rax
+        Tail1_1:
+                rmmovq %r9, (%rsi)      # store val1 to dst[0]
+                andq %r9, %r9           # val1 <= 0?
+                jle Done                # if so, goto Done
+                iaddq $1, %rax          # count++
+        ##################################################################
+        # Do not modify the following section of code
+        # Function epilogue.
+        Done:
+                ret
+        ##################################################################
+        # Keep the following label at the end of your function
+        End:
+        #/* $end ncopy-ys */
+
+
+进行上述优化后，程序的平均CPE从7.82下降到了7.49，``ncopy.yo`` 为998字节。我们最终在满足条件下获得了60分满分。
+
+
+0x04. 总结和评价
+----------------
+
+这个实验对我来说非常有价值。毕竟在一家以CPU IP享誉业界的公司工作，虽然是做软件的，但我也不能不对CPU的底层架构有所了解。
+可以说，这个实验可以说给了我一次刘姥姥进大观园的感受。其中Part C部分的循环展开的优化，让我终于理解了为什么VPP代码里的数据面的网络节点要针对报文数量进行不同次数的循环展开。
+最后60分的内容参考了别人的实现，其中三叉树的部分感觉还是理解地不够深刻，希望日后对数据结构理解更为透彻后也能悟出其中的奥秘。
+
+
+
+
