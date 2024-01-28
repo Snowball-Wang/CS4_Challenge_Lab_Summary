@@ -1,5 +1,5 @@
 Lab 5: Xv6 Lazy Page Allocation
-================================
+==================================
 
 1. 实验介绍
 -----------
@@ -9,7 +9,7 @@ Lab 5: Xv6 Lazy Page Allocation
 所以，为了让 ``sbrk`` 能够更快地完成堆内存的请求，我们将在此实验中，实现xv6 ``page fault`` 的特性，从而达到xv6堆内存延迟分配的功能。
 
 2. 代码实现及思路
-----------------
+------------------
 
 Eliminate allocation from sbrk()
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -185,7 +185,7 @@ Lazy allocation
     hi
 
 
-具体实现代码可参考此 `链接 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/1db690524ed0c391158e39671a59e540611c3d0b>`_ 。
+具体实现代码可参考 `链接1 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/1db690524ed0c391158e39671a59e540611c3d0b>`_ 。
 
 最后，我们可以添加 ``page table`` 实验中的 ``vmprint`` 函数，来对比缺页错误处理前后进程的页表状况。
 
@@ -551,11 +551,11 @@ Lazytests and Usertests
 
 再次运行 ``usertests`` ，测试用例全部通过。
 
-具体实现代码可参考此 `链接 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/ffa11184a22bba200de6a88a2438a783ef6919b2>`_ 。
+具体实现代码可参考此 `链接2 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/ffa11184a22bba200de6a88a2438a783ef6919b2>`_ 。
 
 
 实验最终结果
-^^^^^^^^^^^
+^^^^^^^^^^^^^
 
 实验最后还需要添加 ``time.txt`` 文件记录实验所花费的时间。另外 ``lazytests.c`` 中的三个用例的描述需改回同原来一样，评分的脚本是通过字符匹配来确定测试用例通过。
 

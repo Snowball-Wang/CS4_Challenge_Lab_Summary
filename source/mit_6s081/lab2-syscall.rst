@@ -1,5 +1,5 @@
 Lab 2: System Calls
-===================
+==================================
 
 1. 实验介绍
 -----------
@@ -8,7 +8,7 @@ Lab 2: System Calls
 在这个过程中，我们可以加深对系统调用的理解，同时开始接触xv6内核代码的实现。
 
 2. 代码实现及思路
-----------------
+-------------------
 
 system call tracing
 ^^^^^^^^^^^^^^^^^^^
@@ -134,6 +134,7 @@ xv6提供了用户态的 ``trace`` 程序（位于 ``user/trace.c`` ），如下
 对应的 ``sys_trace`` 的实现如下所示。
 
 .. code-block:: c
+    
     uint64
     sys_trace(void)
     {
@@ -147,7 +148,7 @@ xv6提供了用户态的 ``trace`` 程序（位于 ``user/trace.c`` ），如下
 最后，实现一个系统调用名字符串数组 ``static char* syscall_names[]`` ，同时在 ``syscall`` 执行中加入进程的 ``trace`` 是否置位的判断。
 最后的最后，需要在进程销毁函数 ``freeproc`` 中把销毁的进程的trace掩码置为0。
 
-代码的具体实现可参考此 `链接 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/b8c37f4a4eadba73e1861d943f7c629799190770>`_ 。
+代码的具体实现可参考 `链接1 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/b8c37f4a4eadba73e1861d943f7c629799190770>`_ 。
 
 sysinfo
 ^^^^^^^
@@ -227,11 +228,11 @@ sysinfo
         return 0;
     }
 
-详细的代码实现可参照 `链接 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/8be566725b95fdd99fe3ae8d10155eda4dbc1a16>`_ 。
+详细的代码实现可参照 `链接2 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/8be566725b95fdd99fe3ae8d10155eda4dbc1a16>`_ 。
 
 
 实验最终结果
-^^^^^^^^^^^
+^^^^^^^^^^^^^
 
 实验最后还需要添加 ``time.txt`` 文件记录实验所花费的时间。敲入 ``make grade`` 命令，可看到实验得分满分。
 

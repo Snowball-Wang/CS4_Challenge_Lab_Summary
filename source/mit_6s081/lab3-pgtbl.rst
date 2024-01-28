@@ -1,5 +1,5 @@
 Lab 3: Page Tables
-===================
+======================
 
 1. 实验介绍
 -----------
@@ -8,7 +8,7 @@ Lab 3: Page Tables
 在这个实验中，我们将探索xv6页表的实现，以及基于我们对xv6页表的修改，简化我们从用户态拷贝数据到内核态的相关函数。
 
 2. 代码实现及思路
-----------------
+------------------
 
 Print a page table
 ^^^^^^^^^^^^^^^^^^^
@@ -118,7 +118,7 @@ Print a page table
 
 敲入命令 ``./grade-lab-pgtbl pte printout`` ，可以看到本部分实验已通过。
 
-代码的具体实现可参考此 `链接 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/d6a8570b5b8937a9c781bb81cd6493c01556b202>`_ 。
+代码的具体实现可参考 `链接1 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/d6a8570b5b8937a9c781bb81cd6493c01556b202>`_ 。
 
 
 A kernel page table per process
@@ -130,6 +130,7 @@ xv6有一个全局的内核页表 ``kernel_pagetable`` ，此内核页表被所�
 根据题目第一条提示，首先在 ``kernel/proc.h`` 中对进程结构体 ``struct proc`` 添加内核页表的成员变量。
 
 .. code-block:: c
+    
     // Per-process state
     struct proc {
         struct spinlock lock;
@@ -454,7 +455,7 @@ xv6启动出现panic，且引发的函数为 ``kvmpa`` 。查看函数 ``kvmpa``
 再次运行xv6，敲入 ``ls`` 命令对应之前的错误消失。
 敲入命令 ``./grade-lab-pgtbl usertests`` ，可以看到 ``usertests`` 中的所有测试用例都通过，本实验完成。
 
-代码的具体实现可参考此 `链接 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/adf1a8da15f8ca8afeff798ea344853ac705ee1d>`_ 。
+代码的具体实现可参考 `链接2 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/adf1a8da15f8ca8afeff798ea344853ac705ee1d>`_ 。
 
 Simplify copyin/copyinstr
 ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -520,7 +521,7 @@ Simplify copyin/copyinstr
     err:
         uvmunmap(kpagetable, PGROUNDUP(start), (i - PGROUNDUP(start)) / PGSIZE, 0);
         return -1;
-}
+    }
 
 对应 ``u2kvmcopy`` 函数，我们还应实现一个函数，用来释放内核页表中添加的用户态页表映射关系。
 参考 ``uvmdealloc`` 函数，我们构造 ``kuvmdealloc`` 函数。
@@ -602,7 +603,7 @@ Simplify copyin/copyinstr
 在添加上述逻辑时，我们还需注意题目提示五给的 ``PLIC`` 的要求，所以我们需要将内核页表创建和销毁过程中的关于 ``PLIC`` 的代码注释掉。
 同时，在释放内核页表时，我们也需要对内核页表中添加的用户态映射关机进行释放。这个细节不能够遗忘。
 
-上述代码的具体实现可参考此 `链接 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/b254de6b7be136e128185714c52219a5ce570054>`_ 。
+上述代码的具体实现可参考 `链接3 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/b254de6b7be136e128185714c52219a5ce570054>`_ 。
 
 运行 ``usertests`` 程序，发现 ``sbrkbasic`` 和 ``sbrkbugs`` 两个测试用例出错。
 进一步调试，发现错误定位在 ``sbrkbasic`` 调用 ``sbrk(1)`` 处，错误显示 ``test sbrkbasic: panic: u2kvmcopy: page not present`` 。
@@ -616,11 +617,11 @@ Simplify copyin/copyinstr
 
 再次运行 ``usertests`` 程序，发现所有测试用例通过，实验完成。
 
-上述代码的具体实现可参考此 `链接 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/65291a4893e32d058b0bae8999cde64bda79b125>`_ 。
+上述代码的具体实现可参考 `链接4 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/65291a4893e32d058b0bae8999cde64bda79b125>`_ 。
 
 
 实验最终结果
-^^^^^^^^^^^
+^^^^^^^^^^^^^
 
 实验最后还需要添加 ``time.txt`` 文件记录实验所花费的时间，以及 ``answers-pgtbl.txt`` 回答实验中的问题。敲入 ``make grade`` 命令，可看到实验得分满分。
 

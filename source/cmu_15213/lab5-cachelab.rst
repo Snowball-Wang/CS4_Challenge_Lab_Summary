@@ -67,7 +67,7 @@ Part A
 
 ``csim-ref`` 的使用如下所示：
 
-.. code-block: console
+.. code-block:: console
 
     Usage: ./csim-ref [-hv] -s <s> -E <E> -b <b> -t <tracefile>
 
@@ -81,7 +81,7 @@ Part A
 
 我们可根据上述的描述，运行 ``csim-ref`` 来对其有个直观的感受：
 
-.. code-block: console
+.. code-block:: console
 
     $ ./csim-ref -s 4 -E 1 -b 4 -t traces/yi.trace
     hits:4 misses:5 evictions:3
@@ -107,4 +107,38 @@ Part A
 
 ``csim`` 实现
 ''''''''''''''''
+
+在实现 ``csim`` 之前，我们可在gdb中通过指令 ``disassemble main`` 来查看 ``csim-ref`` 中 ``main`` 函数中所调用的函数。
+我们的 ``csim`` 缓存模拟器的设计，可从 ``csim-ref`` 中的 ``main`` 函数获取灵感。
+
+.. code-block:: console
+
+    $ gdb ./csim-ref
+    (gdb) disassemble main
+    ...
+    call   0x400a90 <atoi@plt>
+    ...
+    call   0x401202 <printUsage>
+    ...
+    call   0x400a80 <getopt@plt>
+    ...
+    call   0x400be0 <initCache>
+    ...
+    call   0x40105c <replayTrace>
+    ...
+    call   0x400d81 <freeCache>
+    ...
+    call   0x401494 <printSummary>
+
+上述已将不重要的二进制代码剔除，提取出 ``csim-ref`` 中 ``main`` 函数所调用的函数。
+由此，我们可以对 ``csim-ref`` 中 ``main`` 函数做的事进行总结：
+
+* 调用 ``getopt`` 函数对命令行参数进行解析
+* 当命令行参数包含 ``-h`` 时，调用 ``printUsage`` 函数对用户进行提示
+* 基于解析成功的缓存参数，调用 ``initCache`` 函数对缓存进行初始化
+* 调用 ``replayTrace`` 函数，对每条valgrind的memory trace进行处理，判断其是缓存命中、不命中还是其它
+* 调用 ``freeCache`` 释放创建缓存使用到的内存
+
+
+
 

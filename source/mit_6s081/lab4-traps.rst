@@ -7,7 +7,7 @@ Lab 4: Traps
 系统调用本质上是属于 ``trap`` 机制的一种。在此实验中，我们将深入到xv6 ``trap`` 的具体实现，完成一个用户态 ``trap`` 处理的设计与实现。
 
 2. 代码实现及思路
-----------------
+------------------
 
 RISC-V assembly
 ^^^^^^^^^^^^^^^^^
@@ -179,7 +179,7 @@ Backtrace
     /home/jiewan01/CS4_Challenge/xv6-labs-2020/kernel/syscall.c:144
     /home/jiewan01/CS4_Challenge/xv6-labs-2020/kernel/trap.c:76
 
-代码的具体实现可参考此 `链接 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/ee5737b1f2a0e206d6ba2efd54e57866ad098c7e>`_ 。
+代码的具体实现可参考 `链接1 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/ee5737b1f2a0e206d6ba2efd54e57866ad098c7e>`_ 。
 
 
 Alarm
@@ -339,7 +339,7 @@ test 0: invoke handler
 我们可以先将 ``alarmtest.c`` 中 ``main`` 函数里的 ``test1`` 和 ``test2`` 注释掉，只运行 ``test0`` 。
 可以看到，``alarmtest`` 运行通过。
 
-test0的具体实现代码可参考此 `链接 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/28efd26752c346dacf1c629fa4c7c297a0091a01>`_ 。
+test0的具体实现代码可参考 `链接2 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/28efd26752c346dacf1c629fa4c7c297a0091a01>`_ 。
 
 test1/test2(): resume interrupted code
 '''''''''''''''''''''''''''''''''''''''
@@ -462,11 +462,11 @@ test1/test2(): resume interrupted code
 
 运行 ``alarmtest`` ，可以看到此次所有test通过。
 
-test1/test2的具体实现代码可参考此 `链接 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/baf21e160119e5623b7913eda0eb1d95b874bd06>`_ 。
+test1/test2的具体实现代码可参考 `链接3 <https://github.com/Snowball-Wang/MIT_6S081_Operating_System_Engineering/commit/baf21e160119e5623b7913eda0eb1d95b874bd06>`_ 。
 
 
 实验最终结果
-^^^^^^^^^^^
+^^^^^^^^^^^^^^
 
 实验最后还需要添加 ``time.txt`` 文件记录实验所花费的时间，以及 ``answers-traps.txt`` 回答实验中的问题。敲入 ``make grade`` 命令，可看到实验得分满分。
 

@@ -1280,6 +1280,7 @@ operand size            1               2               3               4       
 单步调试到 ``0x401243`` 处， 输入 ``22``， ``gdb`` 中输入 ``c`` ，如下所示， ``secret_phase`` 拆弹完成。
 
 .. code-block:: console
+
     (gdb) c
     Continuing.
     Wow! You've defused the secret stage!
