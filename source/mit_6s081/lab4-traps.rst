@@ -18,7 +18,7 @@ RISC-V assembly
 
 函数 ``g`` 的汇编代码：
 
-.. code-block:: asm
+.. code-block:: console
 
     0000000000000000 <g>:
     int g(int x) {
@@ -34,7 +34,7 @@ RISC-V assembly
 
 函数 ``f`` 的汇编代码：
 
-.. code-block:: asm
+.. code-block:: console
 
     000000000000000e <f>:
     int f(int x) {
@@ -50,7 +50,7 @@ RISC-V assembly
 
 函数 ``main`` 的汇编代码：
 
-.. code-block:: asm
+.. code-block:: console
 
     void main(void) {
     1c:	1141                	addi    sp,sp,-16

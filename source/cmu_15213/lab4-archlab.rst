@@ -95,142 +95,144 @@ Lab 4: Architecture Lab
 
 因为本实验设计的时间有一定年限了，在编译 ``GUI mode`` 时，会遇到诸如 ``‘Tcl_Interp’ has no member named ‘result’`` 和 ``undefined reference to `matherr'`` 等错误，这是由于Tcl库版本兼容的问题导致的，可通过以下patch解决。
 
-.. code-block:: console
+.. code-block:: text
 
-    Author: Jieqiang Wang <wangjieqiang123@163.com>
-    Date:   Tue Jul 11 10:15:20 2023 +0800
+        $ cat fix_build.diff
+        Author: Jieqiang Wang <wangjieqiang123@163.com>
+        Date:   Tue Jul 11 10:15:20 2023 +0800
 
         archlab: fix build issues for GUI mode
 
-    diff --git a/sim/Makefile b/sim/Makefile
-    index 7fd8f06..887fe84 100644
-    --- a/sim/Makefile
-    +++ b/sim/Makefile
-    @@ -1,19 +1,19 @@
-    # Comment this out if you don't have Tcl/Tk on your system
+        diff --git a/sim/Makefile b/sim/Makefile
+        index 7fd8f06..887fe84 100644
+        --- a/sim/Makefile
+        +++ b/sim/Makefile
+        @@ -1,19 +1,19 @@
+        # Comment this out if you don't have Tcl/Tk on your system
 
-    -#GUIMODE=-DHAS_GUI
-    +GUIMODE=-DHAS_GUI
+        -#GUIMODE=-DHAS_GUI
+        +GUIMODE=-DHAS_GUI
 
-    # Modify the following line so that gcc can find the libtcl.so and
-    # libtk.so libraries on your system. You may need to use the -L option
-    # to tell gcc which directory to look in. Comment this out if you
-    # don't have Tcl/Tk.
+        # Modify the following line so that gcc can find the libtcl.so and
+        # libtk.so libraries on your system. You may need to use the -L option
+        # to tell gcc which directory to look in. Comment this out if you
+        # don't have Tcl/Tk.
 
-    -TKLIBS=-L/usr/lib -ltk -ltcl
-    +TKLIBS=-L/usr/lib -ltk8.6 -ltcl8.6
+        -TKLIBS=-L/usr/lib -ltk -ltcl
+        +TKLIBS=-L/usr/lib -ltk8.6 -ltcl8.6
 
-    # Modify the following line so that gcc can find the tcl.h and tk.h
-    # header files on your system. Comment this out if you don't have
-    # Tcl/Tk.
+        # Modify the following line so that gcc can find the tcl.h and tk.h
+        # header files on your system. Comment this out if you don't have
+        # Tcl/Tk.
 
-    -TKINC=-isystem /usr/include/tcl8.5
-    +TKINC=-isystem /usr/include/tcl8.6
+        -TKINC=-isystem /usr/include/tcl8.5
+        +TKINC=-isystem /usr/include/tcl8.6
 
-    ##################################################
-    # You shouldn't need to modify anything below here
-    diff --git a/sim/pipe/Makefile b/sim/pipe/Makefile
-    index ca4607e..81839fc 100644
-    --- a/sim/pipe/Makefile
-    +++ b/sim/pipe/Makefile
-    @@ -17,7 +17,7 @@ TKLIBS=-L/usr/lib -ltk -ltcl
-    # header files on your system. Comment this out if you don't have
-    # Tcl/Tk.
+        ##################################################
+        # You shouldn't need to modify anything below here
+        diff --git a/sim/pipe/Makefile b/sim/pipe/Makefile
+        index ca4607e..81839fc 100644
+        --- a/sim/pipe/Makefile
+        +++ b/sim/pipe/Makefile
+        @@ -17,7 +17,7 @@ TKLIBS=-L/usr/lib -ltk -ltcl
+        # header files on your system. Comment this out if you don't have
+        # Tcl/Tk.
 
-    -TKINC=-isystem /usr/include/tcl8.5
-    +TKINC=-isystem /usr/include/tcl8.6
+        -TKINC=-isystem /usr/include/tcl8.5
+        +TKINC=-isystem /usr/include/tcl8.6
 
-    # Modify these two lines to choose your compiler and compile time
-    # flags.
-    @@ -25,6 +25,9 @@ TKINC=-isystem /usr/include/tcl8.5
-    CC=gcc
-    CFLAGS=-Wall -O2
+        # Modify these two lines to choose your compiler and compile time
+        # flags.
+        @@ -25,6 +25,9 @@ TKINC=-isystem /usr/include/tcl8.5
+        CC=gcc
+        CFLAGS=-Wall -O2
 
-    +# Add following flags to suppress building error due to tcl tools
-    +CPPFLAGS=-DUSE_INTERP_RESULT
-    +
-    ##################################################
-    # You shouldn't need to modify anything below here
-    ##################################################
-    @@ -41,7 +44,7 @@ all: psim drivers
-    psim: psim.c sim.h pipe-$(VERSION).hcl $(MISCDIR)/isa.c $(MISCDIR)/isa.h
-            # Building the pipe-$(VERSION).hcl version of PIPE
-            $(HCL2C) -n pipe-$(VERSION).hcl < pipe-$(VERSION).hcl > pipe-$(VERSION).c
-    -       $(CC) $(CFLAGS) $(INC) -o psim psim.c pipe-$(VERSION).c \
-    +       $(CC) $(CPPFLAGS) $(CFLAGS) $(INC) -o psim psim.c pipe-$(VERSION).c \
-                    $(MISCDIR)/isa.c $(LIBS)
+        +# Add following flags to suppress building error due to tcl tools
+        +CPPFLAGS=-DUSE_INTERP_RESULT
+        +
+        ##################################################
+        # You shouldn't need to modify anything below here
+        ##################################################
+        @@ -41,7 +44,7 @@ all: psim drivers
+        psim: psim.c sim.h pipe-$(VERSION).hcl $(MISCDIR)/isa.c $(MISCDIR)/isa.h
+                # Building the pipe-$(VERSION).hcl version of PIPE
+                $(HCL2C) -n pipe-$(VERSION).hcl < pipe-$(VERSION).hcl > pipe-$(VERSION).c
+        -       $(CC) $(CFLAGS) $(INC) -o psim psim.c pipe-$(VERSION).c \
+        +       $(CC) $(CPPFLAGS) $(CFLAGS) $(INC) -o psim psim.c pipe-$(VERSION).c \
+                        $(MISCDIR)/isa.c $(LIBS)
 
-    # This rule builds driver programs for Part C of the Architecture Lab
-    diff --git a/sim/pipe/psim.c b/sim/pipe/psim.c
-    index c08508e..28b9642 100644
-    --- a/sim/pipe/psim.c
-    +++ b/sim/pipe/psim.c
-    @@ -803,9 +803,10 @@ void sim_log( const char *format, ... ) {
-    **********************/
+        # This rule builds driver programs for Part C of the Architecture Lab
+        diff --git a/sim/pipe/psim.c b/sim/pipe/psim.c
+        index c08508e..28b9642 100644
+        --- a/sim/pipe/psim.c
+        +++ b/sim/pipe/psim.c
+        @@ -803,9 +803,10 @@ void sim_log( const char *format, ... ) {
+        **********************/
 
-    /* Hack for SunOS */
-    +/*
-    extern int matherr();
-    int *tclDummyMathPtr = (int *) matherr;
-    -
-    +*/
-    static char tcl_msg[256];
+        /* Hack for SunOS */
+        +/*
+        extern int matherr();
+        int *tclDummyMathPtr = (int *) matherr;
+        -
+        +*/
+        static char tcl_msg[256];
 
-    /* Keep track of the TCL Interpreter */
-    diff --git a/sim/seq/Makefile b/sim/seq/Makefile
-    index 0c71aae..9cbd4b9 100644
-    --- a/sim/seq/Makefile
-    +++ b/sim/seq/Makefile
-    @@ -17,7 +17,7 @@ TKLIBS=-L/usr/lib -ltk -ltcl
-    # header files on your system. Comment this out if you don't have
-    # Tcl/Tk.
+        /* Keep track of the TCL Interpreter */
+        diff --git a/sim/seq/Makefile b/sim/seq/Makefile
+        index 0c71aae..9cbd4b9 100644
+        --- a/sim/seq/Makefile
+        +++ b/sim/seq/Makefile
+        @@ -17,7 +17,7 @@ TKLIBS=-L/usr/lib -ltk -ltcl
+        # header files on your system. Comment this out if you don't have
+        # Tcl/Tk.
 
-    -TKINC=-isystem /usr/include/tcl8.5
-    +TKINC=-isystem /usr/include/tcl8.6
+        -TKINC=-isystem /usr/include/tcl8.5
+        +TKINC=-isystem /usr/include/tcl8.6
 
-    # Modify these two lines to choose your compiler and compile time
-    # flags.
-    @@ -25,6 +25,7 @@ TKINC=-isystem /usr/include/tcl8.5
-    CC=gcc
-    CFLAGS=-Wall -O2
+        # Modify these two lines to choose your compiler and compile time
+        # flags.
+        @@ -25,6 +25,7 @@ TKINC=-isystem /usr/include/tcl8.5
+        CC=gcc
+        CFLAGS=-Wall -O2
 
-    +CPPFLAGS=-DUSE_INTERP_RESULT
-    ##################################################
-    # You shouldn't need to modify anything below here
-    ##################################################
-    @@ -41,14 +42,14 @@ all: ssim
-    ssim: seq-$(VERSION).hcl ssim.c  sim.h $(MISCDIR)/isa.c $(MISCDIR)/isa.h
-            # Building the seq-$(VERSION).hcl version of SEQ
-            $(HCL2C) -n seq-$(VERSION).hcl <seq-$(VERSION).hcl >seq-$(VERSION).c
-    -       $(CC) $(CFLAGS) $(INC) -o ssim \
-    +       $(CC) $(CPPFLAGS) $(CFLAGS) $(INC) -o ssim \
-                    seq-$(VERSION).c ssim.c $(MISCDIR)/isa.c $(LIBS)
+        +CPPFLAGS=-DUSE_INTERP_RESULT
+        ##################################################
+        # You shouldn't need to modify anything below here
+        ##################################################
+        @@ -41,14 +42,14 @@ all: ssim
+        ssim: seq-$(VERSION).hcl ssim.c  sim.h $(MISCDIR)/isa.c $(MISCDIR)/isa.h
+                # Building the seq-$(VERSION).hcl version of SEQ
+                $(HCL2C) -n seq-$(VERSION).hcl <seq-$(VERSION).hcl >seq-$(VERSION).c
+        -       $(CC) $(CFLAGS) $(INC) -o ssim \
+        +       $(CC) $(CPPFLAGS) $(CFLAGS) $(INC) -o ssim \
+                        seq-$(VERSION).c ssim.c $(MISCDIR)/isa.c $(LIBS)
 
-    # This rule builds the SEQ+ simulator (ssim+)
-    ssim+: seq+-std.hcl ssim.c sim.h $(MISCDIR)/isa.c $(MISCDIR)/isa.h
-            # Building the seq+-std.hcl version of SEQ+
-            $(HCL2C) -n seq+-std.hcl <seq+-std.hcl >seq+-std.c
-    -       $(CC) $(CFLAGS) $(INC) -o ssim+ \
-    +       $(CC) $(CPPFLAGS) $(CFLAGS) $(INC) -o ssim+ \
-                    seq+-std.c ssim.c $(MISCDIR)/isa.c $(LIBS)
+        # This rule builds the SEQ+ simulator (ssim+)
+        ssim+: seq+-std.hcl ssim.c sim.h $(MISCDIR)/isa.c $(MISCDIR)/isa.h
+                # Building the seq+-std.hcl version of SEQ+
+                $(HCL2C) -n seq+-std.hcl <seq+-std.hcl >seq+-std.c
+        -       $(CC) $(CFLAGS) $(INC) -o ssim+ \
+        +       $(CC) $(CPPFLAGS) $(CFLAGS) $(INC) -o ssim+ \
+                        seq+-std.c ssim.c $(MISCDIR)/isa.c $(LIBS)
 
-    # These are implicit rules for assembling .yo files from .ys files.
-    diff --git a/sim/seq/ssim.c b/sim/seq/ssim.c
-    index 4cae5a9..eecc07d 100644
-    --- a/sim/seq/ssim.c
-    +++ b/sim/seq/ssim.c
-    @@ -841,9 +841,10 @@ void sim_log( const char *format, ... ) {
-    **********************/
+        # These are implicit rules for assembling .yo files from .ys files.
+        diff --git a/sim/seq/ssim.c b/sim/seq/ssim.c
+        index 4cae5a9..eecc07d 100644
+        --- a/sim/seq/ssim.c
+        +++ b/sim/seq/ssim.c
+        @@ -841,9 +841,10 @@ void sim_log( const char *format, ... ) {
+        **********************/
 
-    /* Hack for SunOS */
-    +/*
-    extern int matherr();
-    int *tclDummyMathPtr = (int *) matherr;
-    -
-    +*/
-    static char tcl_msg[256];
+        /* Hack for SunOS */
+        +/*
+        extern int matherr();
+        int *tclDummyMathPtr = (int *) matherr;
+        -
+        +*/
+        static char tcl_msg[256];
 
-    /* Keep track of the TCL Interpreter */
+        /* Keep track of the TCL Interpreter */
+
 
 这个patch的核心修改就是通过添加 ``CPPFLAGS=-DUSE_INTERP_RESULT`` 来绕过因为Tcl库8.6版本问题导致的结构体 ``Tcl_Interp`` 无成员变量 ``result`` 的问题。
 同时注释掉 ``matherr`` 函数的使用，这种用法已经过时了。
@@ -629,7 +631,7 @@ Part B
 在执行阶段， ``iaddq`` 指令的两个输入 ``aluA`` 和 ``aluB`` 分别对应的是 ``valC`` 和 ``valB`` ， ``alufun`` 计算功能为默认加的操作。
 同 ``addq`` 指令一样， ``iaddq`` 指令我们也需要根据指令的计算结果对条件码置位，即把 ``iaddq`` 添加到 ``set_cc`` 的控制逻辑里。
 
-.. code-block:: console
+.. code-block:: text
 
         $ git diff seq/seq-full.hcl
         diff --git a/sim/seq/seq-full.hcl b/sim/seq/seq-full.hcl
@@ -1010,8 +1012,8 @@ Part C
 查看函数 ``ncopy.ys`` 的汇编实现。可以看到，对于变量值的增减，都是先通过 ``irmovq`` 指令将立即数放入指定寄存器中，再完成寄存器的加减操作。
 同SEQ处理器实现一样，这里我们可以为PIPE处理器添加 ``iaddq`` 指令来减少指令数量。修改的 ``pipe-full.hcl`` 如下所示：
 
-.. code-block:: console
-
+.. code-block:: text
+        
         $ git diff pipe-full.hcl
         diff --git a/sim/pipe/pipe-full.hcl b/sim/pipe/pipe-full.hcl
         index 837eb49..c261173 100644

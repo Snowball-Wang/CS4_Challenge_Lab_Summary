@@ -147,7 +147,7 @@ Level 1
 查看 ``ctarget.txt`` ，可以发现函数调用栈是 ``main --> stable_launch --> launch --> test --> getbuf --> Gets`` 。
 想要改变函数 ``test`` 的执行流程，我们先看 ``test`` 的汇编代码：
 
-.. code-block:: asm
+.. code-block:: console
 
     0000000000401968 <test>:
         401968:       48 83 ec 08             sub    $0x8,%rsp
@@ -179,7 +179,7 @@ Level 1
 由汇编代码可以看出， ``test`` 在调用执行完 ``getbuf`` 函数后，下一条命令应该执行的是位于 ``0x401976`` 处的汇编代码，我们要做的，即是通过输入的字符串修改这个值。
 再具体看一下函数 ``getbuf`` 以及 ``getbuf`` 调用的函数 ``Gets`` 的汇编代码：
 
-.. code-block:: asm
+.. code-block:: console
 
     00000000004017a8 <getbuf>:
         4017a8:       48 83 ec 28             sub    $0x28,%rsp
@@ -275,7 +275,7 @@ Level 2
 由上述 ``touch2`` 函数的代码可以看出，Level2与Level1的不同在于，我们还要将cookie值作为参数传给重定向的函数 ``touch2``。
 首先查看一下 ``touch2`` 的汇编代码。 
 
-.. code-block:: asm
+.. code-block:: console
 
     00000000004017ec <touch2>:
         4017ec:       48 83 ec 08             sub    $0x8,%rsp
