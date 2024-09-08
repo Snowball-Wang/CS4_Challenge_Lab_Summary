@@ -26,5 +26,6 @@ CS4_Challenge实验笔记
    cmu_15213/lab3-attacklab
    cmu_15213/lab4-archlab
    cmu_15213/lab5-cachelab
+   cmu_15213/lab6-shlab
 
 
