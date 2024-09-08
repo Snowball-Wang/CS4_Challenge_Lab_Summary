@@ -20,11 +20,11 @@ Lab 6: Shell Lab
 
 * ``eval`` 解析 ``tsh`` 的命令行参数
 * ``builtin_cmd`` 解析 ``tsh`` 的内置命令参数： ``quit`` ， ``fg`` ， ``bg`` 和 ``jobs``
-* ``do_bgfg`` 实现Shell的 ``bg`` 和 ``tg`` 内置命令特性
+* ``do_bgfg`` 实现Shell的 ``bg`` 和 ``fg`` 内置命令特性
 * ``waitfg`` 实现 ``tsh`` 等待前台任务结束的功能
 * ``sigchld_handler`` 捕捉 ``SIGCHLD`` 信号
-* ``sigint_handler`` 捕捉 ``SIGINT`` （Ctrl-C） 信号
-* ``sigtstp_handler`` 捕捉 ``SIGTSTP`` （Ctrl-Z）信号
+* ``sigint_handler`` 捕捉 ``SIGINT`` （ctrl-c） 信号
+* ``sigtstp_handler`` 捕捉 ``SIGTSTP`` （ctrl-z）信号
 
 实验中包含了一个样本shell ``tshref`` 供我们参考与对比。
 与之前的实验一样，我们可通过命令 ``make`` 来编译实验， ``make clean`` 清理实验。
@@ -140,11 +140,11 @@ Lab 6: Shell Lab
 上述三个步骤，我们将分别调用 ``builtin_cmd`` ， ``do_bgfg`` 以及 ``waitfg`` 来实现相应的功能。
 同时，在 ``eval`` 函数的实现过程中，还有一些细节的问题需要我们考虑：
 
-首先是可能出现的同步问题。如同书中8.40的例子，父进程在 ``fork`` 子进程之前，应当使用 ``sigprocmask`` 来屏蔽掉 ``SIGCHLD`` 信号。
+首先是可能出现的同步问题。如同书中8.40的例子，父进程在 ``fork`` 子进程之前，应当使用 ``sigprocmask`` 来屏蔽掉SIGCHLD信号。
 当把子进程加入到任务列表时，也需要屏蔽所有的信号，完成后再解除屏蔽。创建的子进程会继承父进程的屏蔽的信号，所以在执行命令前，需解除相应的信号屏蔽。
 
-其次是 ``SIGINT`` 信号处理函数的作用域问题。 ``tsh`` 是作为前台进程运行在系统中的，所创建的子进程默认和 ``tsh`` 归属于一个前台进程组（foreground process group）。
-所以当我们敲入 ``Ctrl-C`` 想要终止运行在 ``tsh`` 的程序时， ``tsh`` 本身也会终止运行。
+其次是SIGINT信号处理函数的作用域问题。 ``tsh`` 是作为前台进程运行在系统中的，所创建的子进程默认和 ``tsh`` 归属于一个前台进程组（foreground process group）。
+所以当我们敲入 ``ctrl-c` 想要终止运行在 ``tsh`` 的程序时， ``tsh`` 本身也会终止运行。
 实验提供了一种规避的方法，即调用 ``setpgid(0,0)`` 将新创建的子进程的进程组ID设置为其本身的进程ID。这样Shell就能够捕捉到 ``SIGINT`` 信号并将其转发到相应的前台进程组。
 
 最后是关于信号处理函数的小细节。当我们实现对应 ``SIGINT`` 和 ``SIGTSTP`` 的信号处理函数时，我们应处理整个前台进程组，即传给 ``kill`` 函数应该是 ``-pid`` ，而不是 ``pid`` 。
@@ -390,7 +390,7 @@ Lab 6: Shell Lab
         return;
     }
 
-对于SIGCHLD信号而言，情况就稍微复杂一些。我们既要考虑到子进程退出的可能情况，是正常exit退出，还是被 ``Ctrl-C`` 或 ``Ctrl-Z`` 终止或暂停。
+对于SIGCHLD信号而言，情况就稍微复杂一些。我们既要考虑到子进程退出的可能情况，是正常exit退出，还是被 ``ctrl-c`` 或 ``ctrl-z`` 终止或暂停。
 同时也要考虑到可能出现的竞争问题，所以要对 ``deletejob`` 进行相应的同步处理。
 
 .. code-block:: c
@@ -399,8 +399,8 @@ Lab 6: Shell Lab
     {
         /* 3 cases need to be considered here:
         * 1. the child terminates
-        * 2. the child was terminated by Ctrl-C
-        * 3. the child was stopped by a Ctrl-Z
+        * 2. the child was terminated by ctrl-c
+        * 3. the child was stopped by a ctrl-z
         */
 
         /* save error code */
@@ -434,6 +434,7 @@ Lab 6: Shell Lab
                 printf("Job [%d] (%d) terminated by signal %d\n", pid2jid(pid), pid, WTERMSIG(status));
 
             }
+            /* case 3 */
             else if (WIFSTOPPED(status))
             {
                 jb = getjobpid(jobs, pid);
@@ -487,4 +488,4 @@ Lab 6: Shell Lab
 
 这个实验是参考着网上的教程实现的。可以说进一步加深了我对信号以及信号处理中可能出现的同步问题的理解。
 实验过程中曾一度卡在了 ``waitfg`` 的实现，尤其是对 ``sigsuspend`` 函数的理解一开始并不到位。
-另外是在 ``sigchld_handler`` 里还是用了 ``printf`` 这种非异步安全的函数。图了格式化打印的方便，但在实际生产代码中还是铭记不能这么使用。
+另外为了图格式化打印的方便 ``sigchld_handler`` 的实现还是用了 ``printf`` 这种非异步安全的函数，但真正的生产代码肯定是不被允许的。
